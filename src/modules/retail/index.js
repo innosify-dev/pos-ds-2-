@@ -1,5 +1,5 @@
 import { retailConfig } from './config/retail.config.js';
-import { retailNavigation } from './navigation/index.js';
+import { retailNavigation } from './navigation/index.jsx';
 import { retailRoutes } from './navigation/routes.jsx';
 
 /**

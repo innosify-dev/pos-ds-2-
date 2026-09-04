@@ -8,13 +8,14 @@ function NavItems({ items }) {
       to={item.path}
       className={({ isActive }) =>
         cn(
-          'block rounded-lg px-3 py-2.5 text-sm transition-colors',
+          'flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] transition-colors',
           isActive
             ? 'bg-accent-muted font-medium text-accent'
             : 'text-content-muted hover:bg-surface-muted hover:text-content'
         )
       }
     >
+      {item.icon && <span className="h-4 w-4 shrink-0">{item.icon}</span>}
       {item.label}
     </NavLink>
   ));
@@ -23,6 +24,7 @@ function NavItems({ items }) {
 /**
  * Navigation rendering framework.
  * Supports primary items and optional footer items from the active business module.
+ * Items may carry an optional `icon` node — rendered generically, owned by the module.
  */
 export function NavigationShell({ navigation }) {
   const { primary = [], footer = [] } = Array.isArray(navigation)
@@ -38,12 +40,12 @@ export function NavigationShell({ navigation }) {
   }
 
   return (
-    <nav className="flex flex-1 flex-col p-shell">
-      <div className="flex-1 space-y-1">
+    <nav className="flex flex-1 flex-col gap-0.5 overflow-auto p-3">
+      <div className="flex-1 space-y-0.5">
         <NavItems items={primary} />
       </div>
       {footer.length > 0 && (
-        <div className="mt-auto space-y-1 border-t border-border pt-3">
+        <div className="mt-auto space-y-0.5 border-t border-border pt-3">
           <NavItems items={footer} />
         </div>
       )}

@@ -21,7 +21,7 @@ export default defineConfig({
   },
   clearScreen: false,
   server: {
-    port: 1420,
+    port: 4000,
     strictPort: true,
   },
   envPrefix: ['VITE_', 'TAURI_'],

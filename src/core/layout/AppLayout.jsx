@@ -1,23 +1,18 @@
-import { Outlet, useLocation } from 'react-router-dom';
-import { Header } from './Header.jsx';
+import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar.jsx';
-
-const FULL_BLEED_ROUTES = ['/new-sale'];
 
 /**
  * Root application layout shell.
  * Provides the persistent frame around module-specific content.
+ * Must stay business-agnostic — no per-module route lists here.
+ * Modules render their own top bars inside their layouts.
  */
 export function AppLayout() {
-  const location = useLocation();
-  const isFullBleed = FULL_BLEED_ROUTES.some((r) => location.pathname.endsWith(r));
-
   return (
     <div className="flex h-full min-h-screen bg-surface">
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
-        <Header />
-        <main className={`flex-1 overflow-hidden ${isFullBleed ? '' : 'overflow-auto'}`}>
+        <main className="flex-1 overflow-auto">
           <Outlet />
         </main>
       </div>

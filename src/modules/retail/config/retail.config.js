@@ -1,5 +1,5 @@
 export const retailConfig = {
   id: 'retail',
-  name: 'Retail',
+  name: 'Saree Studio',
   routePrefix: '/retail',
 };

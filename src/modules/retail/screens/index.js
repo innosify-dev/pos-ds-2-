@@ -1,4 +1,10 @@
-/**
- * Retail-specific screen components.
- * Organize by feature (e.g. products/, sales/, inventory/).
- */
+export { DashboardScreen } from './dashboard/DashboardScreen.jsx';
+export { ProductsScreen } from './products/ProductsScreen.jsx';
+export { ProductFormScreen } from './product-form/ProductFormScreen.jsx';
+export { CategoriesScreen } from './categories/CategoriesScreen.jsx';
+export { RegistersScreen } from './registers/RegistersScreen.jsx';
+export { RegisterFormScreen } from './register-form/RegisterFormScreen.jsx';
+export { SalesScreen } from './sales/SalesScreen.jsx';
+export { ReturnsScreen } from './returns/ReturnsScreen.jsx';
+export { RefundsScreen } from './refunds/RefundsScreen.jsx';
+export { CustomersScreen } from './customers/CustomersScreen.jsx';

@@ -131,20 +131,6 @@ modules/retail/
 
 Retail screens grow inside `screens/` by feature — not in a global `pages/` folder.
 
-### Retail Cashier (Implemented)
-
-The Retail Cashier UI is documented in `modules/retail/RETAIL_CASHIER.md`. Key additions within the retail module:
-
-```
-modules/retail/
-├── constants/     # Cashier-specific constants (tax rate, payment methods)
-├── data/          # Mock data separated from UI
-├── utils/         # Cashier formatting and calculation utilities
-├── store/         # CashierProvider (module-scoped state)
-├── components/pos/  # POS-specific components (ProductCard, CartItem, etc.)
-└── screens/       # Feature screens (new-sale, sales, returns, etc.)
-```
-
 Navigation supports `primary` and `footer` item groups via `NavigationShell`.
 
 ### `store/` — Global State
@@ -247,7 +233,7 @@ Adding a new business type primarily means adding a new folder under `modules/` 
 
 Shared components use tokens and Tailwind utilities — not hardcoded colors. When adding a new generic control, start from shadcn/ui and place it in `shared/`. Do not introduce another UI library alongside it.
 
-Existing cashier screens already have working primitives (`Button`, `Input`, `Modal`, `Table`, …). Keep their look; use shadcn for new shared controls or to replace a primitive when accessibility or composition is clearly better.
+Existing shared primitives (`Button`, `Input`, `Modal`, `Table`, …) define the look; use shadcn for new shared controls or to replace a primitive when accessibility or composition is clearly better.
 
 ## State Management
 
