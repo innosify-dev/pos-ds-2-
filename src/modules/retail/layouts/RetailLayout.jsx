@@ -13,6 +13,9 @@ const routeTitles = {
   returns: 'Return',
   refunds: 'Refunds',
   customers: 'Customers',
+  team: 'Team',
+  analytics: 'Analytics',
+  settings: 'Settings',
 };
 
 /**

@@ -264,11 +264,11 @@ export function PrintPreviewModal({ open, onClose, combos, index, onIndex, produ
             </div>
             <p className="text-center text-[11px] text-content-muted">Total Labels: {totalLabels}</p>
             <label className="flex cursor-pointer items-center gap-2 text-[13px] text-accent">
-              <input type="checkbox" checked={settings.printBorder} onChange={(e) => set('printBorder', e.target.checked)} className="h-4 w-4 accent-[#7c3aed]" />
+              <input type="checkbox" checked={settings.printBorder} onChange={(e) => set('printBorder', e.target.checked)} className="h-4 w-4 accent-brand" />
               Print Border
             </label>
             <label className="flex cursor-pointer items-center gap-2 text-[13px] text-content">
-              <input type="checkbox" checked={settings.cuttingMarks} onChange={(e) => set('cuttingMarks', e.target.checked)} className="h-4 w-4 accent-[#7c3aed]" />
+              <input type="checkbox" checked={settings.cuttingMarks} onChange={(e) => set('cuttingMarks', e.target.checked)} className="h-4 w-4 accent-brand" />
               Cutting Marks
             </label>
             <Button variant="outline" size="sm" className="w-full" onClick={() => setSettings(defaultSettings)}>

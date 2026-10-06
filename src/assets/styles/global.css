@@ -12,6 +12,124 @@
   }
 
   body {
-    @apply bg-surface text-content font-sans antialiased;
+    background-color: var(--color-canvas);
+    color: var(--color-content);
+    font-family: var(--font-sans), system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    background: var(--lavender);
+  }
+}
+
+@layer utilities {
+  /* Motion primitives shared by dashboard, analytics and team screens. */
+  .animate-fade-up {
+    animation: fade-up 500ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .animate-fade-in {
+    animation: fade-in 400ms ease-out both;
+  }
+
+  .animate-pop-in {
+    animation: pop-in 320ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+
+  .animate-shimmer {
+    background: linear-gradient(
+      90deg,
+      var(--color-surface-muted) 25%,
+      var(--color-surface-elevated) 50%,
+      var(--color-surface-muted) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.4s ease-in-out infinite;
+  }
+
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Signal gradient — the one place vivid color is allowed (fills + stripes). */
+  .bg-signal {
+    background-image: var(--signal-gradient);
+  }
+
+  .text-signal-gradient {
+    background-image: var(--signal-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .animate-signal-pulse {
+    animation: signal-pulse 2.4s ease-in-out infinite;
+  }
+
+  .animate-stripe-in {
+    animation: stripe-in 600ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+}
+
+@keyframes signal-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@keyframes stripe-in {
+  from {
+    transform: scaleY(0);
+    opacity: 0;
+  }
+  to {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
   }
 }

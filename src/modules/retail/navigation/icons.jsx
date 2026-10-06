@@ -103,3 +103,32 @@ export function CustomersIcon() {
     </Icon>
   );
 }
+
+export function TeamIcon() {
+  return (
+    <Icon>
+      <circle cx="12" cy="8" r="3.4" />
+      <path d="M5.5 20a6.5 6.5 0 0 1 13 0" />
+      <path d="M4 11h2M18 11h2" />
+    </Icon>
+  );
+}
+
+export function AnalyticsIcon() {
+  return (
+    <Icon>
+      <path d="M4 19V5" />
+      <path d="M4 19h16" />
+      <path d="M8 16v-4M12 16V8M16 16v-6M20 16v-9" />
+    </Icon>
+  );
+}
+
+export function SettingsIcon() {
+  return (
+    <Icon>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M18.4 5.6l-1.8 1.8M7.4 16.6l-1.8 1.8" />
+    </Icon>
+  );
+}

@@ -228,8 +228,9 @@ Adding a new business type primarily means adding a new folder under `modules/` 
 - **Tailwind:** extended in `tailwind.config.js` to reference token variables (includes shadcn semantic aliases such as `primary` / `destructive` mapped to the same tokens)
 - **shadcn/ui:** source of modern React UI primitives; copied into `shared/ui/` (and related `shared/` folders) and styled with Tailwind + design tokens
 - **shadcn CLI:** `components.json` — JavaScript, output path `shared/ui/`. Add a primitive with `npx shadcn@latest add <component>`, then restyle to tokens if needed. Do **not** create `src/components/`
-- **Theme:** `core/theme/ThemeProvider.jsx` toggles `light`/`dark` class on `<html>`
-- **Global styles:** `assets/styles/global.css`
+- **Theme:** `core/theme/ThemeProvider.jsx` toggles `light`/`dark` class on `<html>`; both modes resolve to the same warm Takshi Silks tokens (no dark-mode styling)
+- **Global styles:** `assets/styles/global.css` (body uses raw token vars, never `@apply` with generated utilities)
+- **Palette (Takshi Silks):** cream `#FBF7EF` app background, ivory `#FFFCF7` cards, purple `#6B238F` primary actions, plum `#42134F` contrast, lavender `#EEE4F5` selected backgrounds, gold `#C89B3C` restrained accents, warm cream-gray `#E9DED0` borders, charcoal `#211C24` text, warm gray `#756B75` secondary text; success `#287A43`/`#DDF3E3`, warning `#A66A00`/`#FFF0CC`, danger `#B42323`/`#FDE3E3`; 14px default / 18px large radius
 
 Shared components use tokens and Tailwind utilities — not hardcoded colors. When adding a new generic control, start from shadcn/ui and place it in `shared/`. Do not introduce another UI library alongside it.
 

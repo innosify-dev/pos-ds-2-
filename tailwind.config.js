@@ -7,42 +7,65 @@ export default {
   theme: {
     extend: {
       colors: {
+        canvas: 'var(--color-canvas)',
+        cream: 'var(--color-cream)',
+        ivory: 'var(--color-ivory)',
+        lavender: 'var(--color-lavender)',
+        brand: {
+          DEFAULT: 'rgb(var(--rgb-brand) / <alpha-value>)',
+          hover: 'var(--color-brand-hover)',
+          muted: 'var(--color-brand-muted)',
+        },
+        plum: 'rgb(var(--rgb-plum) / <alpha-value>)',
+        ink: {
+          DEFAULT: 'rgb(var(--rgb-ink) / <alpha-value>)',
+          soft: 'var(--color-accent-hover)',
+        },
+        sidebar: 'var(--color-sidebar)',
+        signal: {
+          lime: 'rgb(var(--rgb-signal-lime) / <alpha-value>)',
+          amber: 'rgb(var(--rgb-signal-amber) / <alpha-value>)',
+        },
+        gold: {
+          DEFAULT: 'rgb(var(--rgb-gold) / <alpha-value>)',
+          muted: 'var(--color-gold-muted)',
+        },
         surface: {
           DEFAULT: 'var(--color-surface)',
           elevated: 'var(--color-surface-elevated)',
-          muted: 'var(--color-surface-muted)',
+          muted: 'rgb(var(--rgb-surface-muted) / <alpha-value>)',
         },
         border: {
-          DEFAULT: 'var(--color-border)',
-          strong: 'var(--color-border-strong)',
+          DEFAULT: 'rgb(var(--rgb-border) / <alpha-value>)',
+          strong: 'rgb(var(--rgb-border-strong) / <alpha-value>)',
         },
         content: {
-          DEFAULT: 'var(--color-content)',
-          muted: 'var(--color-content-muted)',
+          DEFAULT: 'rgb(var(--rgb-content) / <alpha-value>)',
+          muted: 'rgb(var(--rgb-content-muted) / <alpha-value>)',
           inverse: 'var(--color-content-inverse)',
         },
         accent: {
-          DEFAULT: 'var(--color-accent)',
+          DEFAULT: 'rgb(var(--rgb-accent) / <alpha-value>)',
           hover: 'var(--color-accent-hover)',
-          muted: 'var(--color-accent-muted)',
+          muted: 'rgb(var(--rgb-accent-muted) / <alpha-value>)',
         },
         success: {
-          DEFAULT: 'var(--color-success)',
+          DEFAULT: 'rgb(var(--rgb-success) / <alpha-value>)',
           muted: 'var(--color-success-muted)',
         },
         warning: {
-          DEFAULT: 'var(--color-warning)',
+          DEFAULT: 'rgb(var(--rgb-warning) / <alpha-value>)',
           muted: 'var(--color-warning-muted)',
         },
         danger: {
-          DEFAULT: 'var(--color-danger)',
+          DEFAULT: 'rgb(var(--rgb-danger) / <alpha-value>)',
           muted: 'var(--color-danger-muted)',
         },
         /* shadcn/ui semantic aliases — same tokens, so generated components match the POS theme */
         background: 'var(--color-surface)',
         foreground: 'var(--color-content)',
         primary: {
-          DEFAULT: 'var(--color-accent)',
+          DEFAULT: 'rgb(var(--rgb-accent) / <alpha-value>)',
           foreground: 'var(--color-content-inverse)',
         },
         secondary: {
@@ -54,19 +77,19 @@ export default {
           foreground: 'var(--color-content-muted)',
         },
         destructive: {
-          DEFAULT: 'var(--color-danger)',
+          DEFAULT: 'rgb(var(--rgb-danger) / <alpha-value>)',
           foreground: 'var(--color-content-inverse)',
         },
         card: {
           DEFAULT: 'var(--color-surface)',
-          foreground: 'var(--color-content)',
+          foreground: 'rgb(var(--rgb-content) / <alpha-value>)',
         },
         popover: {
           DEFAULT: 'var(--color-surface)',
-          foreground: 'var(--color-content)',
+          foreground: 'rgb(var(--rgb-content) / <alpha-value>)',
         },
-        ring: 'var(--color-accent)',
-        input: 'var(--color-border)',
+        ring: 'rgb(var(--rgb-accent) / <alpha-value>)',
+        input: 'rgb(var(--rgb-border) / <alpha-value>)',
       },
       fontFamily: {
         sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],

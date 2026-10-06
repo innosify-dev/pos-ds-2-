@@ -63,7 +63,7 @@ export function ProductsTable({
               checked={allOnPageSelected}
               onChange={onToggleAll}
               aria-label="Select all products on this page"
-              className="h-4 w-4 accent-[#7c3aed]"
+              className="h-4 w-4 accent-brand"
             />
           </TableHeader>
           <TableHeader className="px-2">Product</TableHeader>
@@ -87,7 +87,7 @@ export function ProductsTable({
                 checked={selectedIds.includes(p.id)}
                 onChange={() => onToggleRow(p.id)}
                 aria-label={`Select ${p.name}`}
-                className="h-4 w-4 accent-[#7c3aed]"
+                className="h-4 w-4 accent-brand"
               />
             </TableCell>
             <TableCell>

@@ -74,7 +74,7 @@ export function formatLabelPrice(value) {
 
 export function BrandMark({ className }) {
   return (
-    <p className={cn('font-serif text-lg font-bold italic text-danger', className)}>Nalli</p>
+    <p className={cn('font-serif text-lg font-bold italic text-plum', className)}>Nalli</p>
   );
 }
 

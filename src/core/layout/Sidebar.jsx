@@ -10,12 +10,12 @@ export function Sidebar() {
   const activeModule = getActiveModule();
 
   return (
-    <aside className="flex w-52 shrink-0 flex-col border-r border-border bg-surface">
-      <div className="flex h-14 items-center gap-2 border-b border-border px-4">
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent font-serif text-sm font-bold text-content-inverse">
-          S
+    <aside className="flex w-56 shrink-0 flex-col bg-sidebar text-content-inverse">
+      <div className="flex h-14 items-center gap-2.5 border-b border-white/10 px-4">
+        <span className="flex h-7 w-7 items-center justify-center rounded-md bg-signal-lime font-serif text-sm font-bold text-ink">
+          T
         </span>
-        <span className="text-sm font-semibold text-accent">{activeModule?.name ?? 'POS'}</span>
+        <span className="text-sm font-semibold tracking-tight text-white">{activeModule?.name ?? 'POS'}</span>
       </div>
       <NavigationShell navigation={navigation} />
     </aside>

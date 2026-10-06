@@ -10,8 +10,8 @@ function NavItems({ items }) {
         cn(
           'flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] transition-colors',
           isActive
-            ? 'bg-accent-muted font-medium text-accent'
-            : 'text-content-muted hover:bg-surface-muted hover:text-content'
+            ? 'bg-white font-medium text-ink'
+            : 'text-white/55 hover:bg-white/10 hover:text-white'
         )
       }
     >
@@ -34,7 +34,7 @@ export function NavigationShell({ navigation }) {
   if (primary.length === 0 && footer.length === 0) {
     return (
       <nav className="flex flex-1 flex-col p-shell">
-        <p className="text-xs text-content-muted">No navigation configured</p>
+        <p className="text-xs text-white/50">No navigation configured</p>
       </nav>
     );
   }
@@ -45,7 +45,7 @@ export function NavigationShell({ navigation }) {
         <NavItems items={primary} />
       </div>
       {footer.length > 0 && (
-        <div className="mt-auto space-y-0.5 border-t border-border pt-3">
+        <div className="mt-auto space-y-0.5 border-t border-white/10 pt-3">
           <NavItems items={footer} />
         </div>
       )}

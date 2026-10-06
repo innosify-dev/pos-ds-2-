@@ -8,3 +8,6 @@ export { SalesScreen } from './sales/SalesScreen.jsx';
 export { ReturnsScreen } from './returns/ReturnsScreen.jsx';
 export { RefundsScreen } from './refunds/RefundsScreen.jsx';
 export { CustomersScreen } from './customers/CustomersScreen.jsx';
+export { TeamScreen } from './team/TeamScreen.jsx';
+export { AnalyticsScreen } from './analytics/AnalyticsScreen.jsx';
+export { SettingsScreen } from './settings/SettingsScreen.jsx';

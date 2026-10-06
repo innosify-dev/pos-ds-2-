@@ -26,8 +26,8 @@ export function Modal({ open, onClose, title, children, footer, size = 'md', cla
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} aria-hidden />
-      <div className={cn('relative flex max-h-[90vh] w-full flex-col rounded-lg bg-surface shadow-xl', sizes[size], className)}>
+      <div className="absolute inset-0 bg-plum/50" onClick={onClose} aria-hidden />
+      <div className={cn('relative flex max-h-[90vh] w-full flex-col rounded-lg bg-surface shadow-xl shadow-plum/10', sizes[size], className)}>
         {title && (
           <div className="flex items-center justify-between border-b border-border px-5 py-4">
             <h2 id="modal-title" className="text-lg font-semibold text-content">{title}</h2>

@@ -1,3 +1,8 @@
+/* Takshi Silks — global design tokens.
+   Single source of truth for the whole admin panel. Every section
+   (dashboard, products, categories, registers, sales, forms, modals…)
+   references these variables via Tailwind — never hardcoded colors. */
+
 :root {
   /* Typography */
   --font-sans: 'Inter', system-ui, sans-serif;
@@ -7,46 +12,122 @@
   --spacing-shell: 1rem;
   --spacing-sidebar: 16rem;
 
-  /* Radius */
-  --radius-default: 0.375rem;
-  --radius-lg: 0.5rem;
+  /* Radius — soft 14–18px boutique corners.
+     Overridden at runtime by the Appearance > Shape setting. */
+  --radius-default: 0.875rem;
+  --radius-lg: 1.125rem;
 
-  /* Light theme tokens */
-  --color-surface: #ffffff;
-  --color-surface-elevated: #f8fafc;
-  --color-surface-muted: #f1f5f9;
-  --color-border: #e2e8f0;
-  --color-border-strong: #cbd5e1;
-  --color-content: #0f172a;
-  --color-content-muted: #64748b;
-  --color-content-inverse: #ffffff;
-  --color-accent: #7c3aed;
-  --color-accent-hover: #6d28d9;
-  --color-accent-muted: #ede9fe;
-  --color-success: #16a34a;
-  --color-success-muted: #dcfce7;
-  --color-warning: #d97706;
-  --color-warning-muted: #fef3c7;
-  --color-danger: #dc2626;
-  --color-danger-muted: #fee2e2;
+  /* Takshi Silks palette */
+  --cream: #FBF7EF;          /* main application background */
+  --ivory: #FFFCF7;          /* cards and content surfaces */
+  --purple: #6B238F;         /* primary brand / actions */
+  --purple-hover: #571C75;
+  --plum: #42134F;           /* strong contrast */
+  --lavender: #EEE4F5;       /* selected / secondary backgrounds */
+  --gold: #C89B3C;           /* premium highlights, restrained */
+  --gold-muted: #F6ECD2;
+  --warm-border: #E9DED0;
+  --warm-border-strong: #D9C9B4;
+  --charcoal: #211C24;       /* primary text */
+  --warm-gray: #756B75;      /* secondary text */
+
+  /* Signal colors — reserved for animation accents (fills, stripes, pulses) */
+  --signal-lime: #7CFF4F;
+  --signal-amber: #FFD84D;
+  --signal-gradient: linear-gradient(90deg, #FFD84D 0%, #7CFF4F 100%);
+
+  /* Surface tokens (Tailwind: surface, canvas) */
+  --color-canvas: var(--cream);
+  --color-surface: var(--ivory);
+  --color-surface-elevated: #FFFDF9;
+  --color-surface-muted: var(--lavender);
+
+  /* Border tokens */
+  --color-border: var(--warm-border);
+  --color-border-strong: var(--warm-border-strong);
+
+  /* Content tokens */
+  --color-content: var(--charcoal);
+  --color-content-muted: var(--warm-gray);
+  --color-content-inverse: var(--ivory);
+
+  /* Sidebar shell — always dark, overrideable from Settings > Appearance */
+  --color-sidebar: #0A0A0B;
+
+  /* Brand / action tokens */
+  --color-accent: var(--purple);
+  --color-accent-hover: var(--purple-hover);
+  --color-accent-muted: var(--lavender);
+  --color-brand: var(--purple);
+  --color-brand-hover: var(--purple-hover);
+  --color-brand-muted: var(--lavender);
+  --color-plum: var(--plum);
+  --color-gold: var(--gold);
+  --color-gold-muted: var(--gold-muted);
+  --color-cream: var(--cream);
+  --color-ivory: var(--ivory);
+  --color-lavender: var(--lavender);
+
+  /* Signal tokens (Tailwind: signal) */
+  --color-signal-lime: var(--signal-lime);
+  --color-signal-amber: var(--signal-amber);
+
+  /* Status tokens */
+  --color-success: #287A43;
+  --color-success-muted: #DDF3E3;
+  --color-warning: #A66A00;
+  --color-warning-muted: #FFF0CC;
+  --color-danger: #B42323;
+  --color-danger-muted: #FDE3E3;
+
+  /* RGB channel triplets — required so Tailwind opacity modifiers
+     (bg-accent/35, stroke-accent/15…) can resolve an alpha channel. */
+  --rgb-accent: 107 35 143;
+  --rgb-accent-hover: 87 28 117;
+  --rgb-accent-muted: 238 228 245;
+  --rgb-brand: 107 35 143;
+  --rgb-plum: 66 19 79;
+  --rgb-ink: 10 10 11;
+  --rgb-gold: 200 155 60;
+  --rgb-signal-lime: 124 255 79;
+  --rgb-signal-amber: 255 216 77;
+  --rgb-border: 233 222 208;
+  --rgb-border-strong: 217 201 180;
+  --rgb-content: 33 28 36;
+  --rgb-content-muted: 117 107 117;
+  --rgb-surface-muted: 238 228 245;
+  --rgb-success: 40 122 67;
+  --rgb-warning: 166 106 0;
+  --rgb-danger: 180 35 35;
 }
 
+/* No dark-mode restyling — the Takshi Silks system is warm cream in every mode. */
 .dark {
-  --color-surface: #0f172a;
-  --color-surface-elevated: #1e293b;
-  --color-surface-muted: #334155;
-  --color-border: #334155;
-  --color-border-strong: #475569;
-  --color-content: #f8fafc;
-  --color-content-muted: #94a3b8;
-  --color-content-inverse: #0f172a;
-  --color-accent: #3b82f6;
-  --color-accent-hover: #60a5fa;
-  --color-accent-muted: #1e3a5f;
-  --color-success: #22c55e;
-  --color-success-muted: #14532d;
-  --color-warning: #f59e0b;
-  --color-warning-muted: #78350f;
-  --color-danger: #ef4444;
-  --color-danger-muted: #7f1d1d;
+  --color-canvas: var(--cream);
+  --color-surface: var(--ivory);
+  --color-surface-elevated: #FFFDF9;
+  --color-surface-muted: var(--lavender);
+  --color-border: var(--warm-border);
+  --color-border-strong: var(--warm-border-strong);
+  --color-content: var(--charcoal);
+  --color-content-muted: var(--warm-gray);
+  --color-content-inverse: var(--ivory);
+  --color-accent: var(--purple);
+  --color-accent-hover: var(--purple-hover);
+  --color-accent-muted: var(--lavender);
+  --color-brand: var(--purple);
+  --color-brand-hover: var(--purple-hover);
+  --color-brand-muted: var(--lavender);
+  --color-plum: var(--plum);
+  --color-gold: var(--gold);
+  --color-gold-muted: var(--gold-muted);
+  --color-cream: var(--cream);
+  --color-ivory: var(--ivory);
+  --color-lavender: var(--lavender);
+  --color-success: #287A43;
+  --color-success-muted: #DDF3E3;
+  --color-warning: #A66A00;
+  --color-warning-muted: #FFF0CC;
+  --color-danger: #B42323;
+  --color-danger-muted: #FDE3E3;
 }

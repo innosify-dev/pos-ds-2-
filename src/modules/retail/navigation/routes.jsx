@@ -11,6 +11,9 @@ import { SalesScreen } from '../screens/sales/SalesScreen.jsx';
 import { ReturnsScreen } from '../screens/returns/ReturnsScreen.jsx';
 import { RefundsScreen } from '../screens/refunds/RefundsScreen.jsx';
 import { CustomersScreen } from '../screens/customers/CustomersScreen.jsx';
+import { TeamScreen } from '../screens/team/TeamScreen.jsx';
+import { AnalyticsScreen } from '../screens/analytics/AnalyticsScreen.jsx';
+import { SettingsScreen } from '../screens/settings/SettingsScreen.jsx';
 
 const base = retailConfig.routePrefix;
 
@@ -33,5 +36,8 @@ export const retailRoutes = [
     <Route path="returns" element={<ReturnsScreen />} />
     <Route path="refunds" element={<RefundsScreen />} />
     <Route path="customers" element={<CustomersScreen />} />
+    <Route path="team" element={<TeamScreen />} />
+    <Route path="analytics" element={<AnalyticsScreen />} />
+    <Route path="settings" element={<SettingsScreen />} />
   </Route>,
 ];

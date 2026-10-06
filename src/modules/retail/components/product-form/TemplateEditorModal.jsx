@@ -432,7 +432,7 @@ export function TemplateEditorModal({ open, onClose, template: initial, onSave, 
                     width: `${canvas.width * pxPerMm}px`,
                     height: `${canvas.height * pxPerMm}px`,
                     backgroundImage: grid
-                      ? 'linear-gradient(to right, rgba(124,58,237,0.08) 1px, transparent 1px), linear-gradient(to bottom, rgba(124,58,237,0.08) 1px, transparent 1px)'
+                      ? 'linear-gradient(to right, rgba(66,19,79,0.08) 1px, transparent 1px), linear-gradient(to bottom, rgba(66,19,79,0.08) 1px, transparent 1px)'
                       : undefined,
                     backgroundSize: grid ? `${5 * pxPerMm}px ${5 * pxPerMm}px` : undefined,
                   }}

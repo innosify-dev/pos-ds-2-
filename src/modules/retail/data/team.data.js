@@ -1,0 +1,100 @@
+/**
+ * Team (staff) data — separated from UI per ARCHITECTURE.md.
+ * Replace with services/api/ calls when the backend lands.
+ */
+
+export const teamFilters = [
+  { id: 'all', label: 'All' },
+  { id: 'billing', label: 'At Billing' },
+  { id: 'stockroom', label: 'Stockroom' },
+  { id: 'floor', label: 'Sales Floor' },
+  { id: 'off', label: 'Off Shift' },
+];
+
+export const teamMembers = [
+  {
+    id: 1,
+    name: 'Priya Sharma',
+    role: 'Cashier',
+    shift: 'billing',
+    status: 'At Billing',
+    initials: 'PS',
+    tone: 'success',
+    orders: 32,
+    sales: 284000,
+    shiftProgress: 82,
+    rating: 4.8,
+  },
+  {
+    id: 2,
+    name: 'Meena Kolat',
+    role: 'Sales Executive',
+    shift: 'floor',
+    status: 'With Customer',
+    initials: 'MK',
+    tone: 'warning',
+    orders: 27,
+    sales: 246000,
+    shiftProgress: 68,
+    rating: 4.6,
+  },
+  {
+    id: 3,
+    name: 'Kavitha Rao',
+    role: 'Store Manager',
+    shift: 'stockroom',
+    status: 'In Stockroom',
+    initials: 'KR',
+    tone: 'muted',
+    orders: 18,
+    sales: 412000,
+    shiftProgress: 74,
+    rating: 4.9,
+  },
+  {
+    id: 4,
+    name: 'Deepa Nair',
+    role: 'Billing Staff',
+    shift: 'billing',
+    status: 'At Billing',
+    initials: 'DN',
+    tone: 'success',
+    orders: 24,
+    sales: 198000,
+    shiftProgress: 58,
+    rating: 4.4,
+  },
+  {
+    id: 5,
+    name: 'Anitha Suresh',
+    role: 'Stock Executive',
+    shift: 'stockroom',
+    status: 'Stock Count',
+    initials: 'AS',
+    tone: 'muted',
+    orders: 9,
+    sales: 64000,
+    shiftProgress: 41,
+    rating: 4.3,
+  },
+  {
+    id: 6,
+    name: 'Ravi Shankar',
+    role: 'Sales Executive',
+    shift: 'off',
+    status: 'Off Shift',
+    initials: 'RS',
+    tone: 'muted',
+    orders: 21,
+    sales: 176000,
+    shiftProgress: 100,
+    rating: 4.5,
+  },
+];
+
+export const teamSummary = {
+  onDuty: 5,
+  totalMembers: 6,
+  ordersToday: 131,
+  salesToday: 1284500,
+};

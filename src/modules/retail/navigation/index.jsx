@@ -1,5 +1,6 @@
 import { retailConfig } from '../config/retail.config.js';
 import {
+  AnalyticsIcon,
   CategoriesIcon,
   CustomersIcon,
   DashboardIcon,
@@ -8,6 +9,8 @@ import {
   RegistersIcon,
   ReturnIcon,
   SalesIcon,
+  SettingsIcon,
+  TeamIcon,
 } from './icons.jsx';
 
 const base = retailConfig.routePrefix;
@@ -26,8 +29,10 @@ export const retailNavigation = {
     { label: 'Return', path: `${base}/returns`, icon: <ReturnIcon /> },
     { label: 'Refunds', path: `${base}/refunds`, icon: <RefundsIcon /> },
     { label: 'Customers', path: `${base}/customers`, icon: <CustomersIcon /> },
+    { label: 'Team', path: `${base}/team`, icon: <TeamIcon /> },
+    { label: 'Analytics', path: `${base}/analytics`, icon: <AnalyticsIcon /> },
   ],
-  footer: [],
+  footer: [{ label: 'Settings', path: `${base}/settings`, icon: <SettingsIcon /> }],
 };
 
 export { retailConfig };
