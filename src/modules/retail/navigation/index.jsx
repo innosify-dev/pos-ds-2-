@@ -4,6 +4,7 @@ import {
   CategoriesIcon,
   CustomersIcon,
   DashboardIcon,
+  InventoryIcon,
   ProductsIcon,
   RefundsIcon,
   RegistersIcon,
@@ -22,8 +23,15 @@ const base = retailConfig.routePrefix;
 export const retailNavigation = {
   primary: [
     { label: 'Dashboard', path: `${base}/dashboard`, icon: <DashboardIcon /> },
-    { label: 'Products', path: `${base}/products`, icon: <ProductsIcon /> },
-    { label: 'Categories', path: `${base}/categories`, icon: <CategoriesIcon /> },
+    {
+      label: 'Inventory',
+      icon: <InventoryIcon />,
+      children: [
+        { label: 'Products', path: `${base}/products`, icon: <ProductsIcon /> },
+        { label: 'Categories', path: `${base}/categories`, icon: <CategoriesIcon /> },
+        { label: 'Brands', path: `${base}/brands` },
+      ],
+    },
     { label: 'Registers', path: `${base}/registers`, icon: <RegistersIcon /> },
     { label: 'Sales', path: `${base}/sales`, icon: <SalesIcon /> },
     { label: 'Return', path: `${base}/returns`, icon: <ReturnIcon /> },

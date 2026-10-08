@@ -8,6 +8,7 @@ const routeTitles = {
   dashboard: 'Dashboard',
   products: 'Products',
   categories: 'Categories',
+  brands: 'Brands',
   registers: 'Registers',
   sales: 'Sales',
   returns: 'Return',

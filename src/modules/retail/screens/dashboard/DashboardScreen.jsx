@@ -9,11 +9,13 @@ import {
   StaffOnDuty,
   StatCard,
   TopProducts,
+  WorkingHoursTracker,
 } from '@modules/retail/components/dashboard';
 import {
   dashboardMeta,
   dashboardStats,
   monthlySalesChart,
+  workingHoursSales,
   restockAlerts,
   salesTarget,
   staffOnDuty,
@@ -82,6 +84,8 @@ export function DashboardScreen() {
           <StatCard key={stat.id} {...stat} index={index} />
         ))}
       </div>
+
+      <WorkingHoursTracker hourly={workingHoursSales.hourly} delay={80} />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <SalesChart points={monthlySalesChart} className="lg:col-span-2" delay={120} />

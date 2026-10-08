@@ -16,6 +16,7 @@ export const dashboardStats = [
     label: 'Total Products',
     value: 1284,
     hint: '42 added this month',
+    to: '/retail/products',
     icon: 'box',
     featured: true,
     trend: [18, 22, 20, 27, 24, 30, 34],
@@ -25,6 +26,7 @@ export const dashboardStats = [
     label: 'Active Categories',
     value: 24,
     hint: 'Silks, Cottons, Jewellery',
+    to: '/retail/categories',
     icon: 'tag',
     trend: [12, 14, 13, 18, 20, 21, 24],
   },
@@ -33,6 +35,7 @@ export const dashboardStats = [
     label: 'Low Stock',
     value: 12,
     hint: 'Needs attention',
+    to: '/retail/products',
     icon: 'alert',
     tone: 'warning',
     trend: [20, 18, 16, 17, 14, 13, 12],
@@ -42,10 +45,20 @@ export const dashboardStats = [
     label: "Today's Orders",
     value: 48,
     hint: '+8 vs yesterday',
+    to: '/retail/sales',
     icon: 'bag',
     trend: [30, 34, 29, 38, 42, 40, 48],
   },
 ];
+
+/** Hourly sales across a day. Index is the hour (0 = 12 AM). */
+export const workingHoursSales = {
+  hourly: [
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    22000, 28000, 45000, 38000, 52000, 61000, 48000, 72000, 86000, 64000, 41000, 18000,
+    0, 0,
+  ],
+};
 
 export const todaysSalesChart = [
   { label: '9 AM', value: 22000 },

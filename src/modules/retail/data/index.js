@@ -1,6 +1,8 @@
+export { readWorkingHours, saveWorkingHours, parseClock } from './workingHours.js';
 export { dashboardMeta } from './dashboard.data.js';
 export {
   dashboardStats,
+  workingHoursSales,
   todaysSalesChart,
   monthlySalesChart,
   recentSales,
@@ -11,6 +13,7 @@ export {
   quickActions,
 } from './dashboard.data.js';
 export { initialProducts, productStatuses, formatPrice } from './products.data.js';
+export { initialBrands } from './brands.data.js';
 export {
   initialCategories,
   buildCategoryTree,

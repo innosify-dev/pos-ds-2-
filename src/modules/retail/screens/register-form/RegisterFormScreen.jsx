@@ -209,7 +209,7 @@ export function RegisterFormScreen() {
         />
       </div>
 
-      <div className="fixed bottom-0 left-52 right-0 z-10 flex items-center justify-end gap-2.5 border-t border-border bg-surface px-5 py-3">
+      <div className="fixed bottom-0 left-56 right-0 z-10 flex items-center justify-end gap-2.5 border-t border-border bg-surface px-5 py-3">
         {actions}
       </div>
     </div>

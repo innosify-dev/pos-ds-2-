@@ -3,7 +3,7 @@ import { Button } from '@shared/ui/Button';
 import { Input } from '@shared/ui/Input';
 import { PanelCard } from '@shared/display/PanelCard';
 import { useTheme } from '@core/theme';
-import { accentOptions, notificationToggles, settingsSections, shapeOptions, sidebarOptions, storeProfile } from '@modules/retail/data';
+import { accentOptions, notificationToggles, readWorkingHours, saveWorkingHours, settingsSections, shapeOptions, sidebarOptions, storeProfile } from '@modules/retail/data';
 import { cn } from '@utils/cn';
 
 function Toggle({ checked, onChange, label }) {
@@ -71,6 +71,8 @@ export function SettingsScreen() {
   const [toggles, setToggles] = useState(() =>
     Object.fromEntries(notificationToggles.map((toggle) => [toggle.id, toggle.enabled]))
   );
+  const [hours, setHours] = useState(readWorkingHours);
+  const [hoursError, setHoursError] = useState('');
   const { theme, setTheme } = useTheme();
 
   useEffect(() => {
@@ -100,6 +102,12 @@ export function SettingsScreen() {
     setSidebar(option.id);
     localStorage.setItem(SIDEBAR_STORAGE_KEY, option.id);
     applySidebarToRoot(option);
+  };
+
+  const updateHours = (next) => {
+    setHours(next);
+    const saved = saveWorkingHours(next);
+    setHoursError(saved ? '' : 'Closing time must be at least an hour after opening.');
   };
 
   return (
@@ -140,6 +148,20 @@ export function SettingsScreen() {
                 <Input label="Phone" defaultValue={storeProfile.phone} />
                 <Input label="GST number" defaultValue={storeProfile.gstNumber} />
                 <Input label="Currency" defaultValue={storeProfile.currency} />
+                <Input
+                  label="Opening time"
+                  type="time"
+                  value={hours.openingTime}
+                  hint="Start of the working day on the dashboard tracker"
+                  onChange={(event) => updateHours({ ...hours, openingTime: event.target.value })}
+                />
+                <Input
+                  label="Closing time"
+                  type="time"
+                  value={hours.closingTime}
+                  error={hoursError}
+                  onChange={(event) => updateHours({ ...hours, closingTime: event.target.value })}
+                />
                 <label className="flex flex-col gap-1.5 text-sm font-medium text-content sm:col-span-2">
                   Address
                   <Input defaultValue={storeProfile.address} />

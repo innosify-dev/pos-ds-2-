@@ -42,6 +42,16 @@ export function ProductsIcon() {
   );
 }
 
+export function InventoryIcon() {
+  return (
+    <Icon>
+      <path d="M3.5 8.5 12 4l8.5 4.5L12 13z" />
+      <path d="M3.5 8.5V16L12 20.5 20.5 16V8.5" />
+      <path d="M12 13v7.5" />
+    </Icon>
+  );
+}
+
 export function CategoriesIcon() {
   return (
     <Icon>

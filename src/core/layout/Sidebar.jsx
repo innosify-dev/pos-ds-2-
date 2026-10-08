@@ -10,7 +10,7 @@ export function Sidebar() {
   const activeModule = getActiveModule();
 
   return (
-    <aside className="flex w-56 shrink-0 flex-col bg-sidebar text-content-inverse">
+    <aside className="flex h-full min-h-0 w-56 shrink-0 flex-col bg-sidebar text-content-inverse">
       <div className="flex h-14 items-center gap-2.5 border-b border-white/10 px-4">
         <span className="flex h-7 w-7 items-center justify-center rounded-md bg-signal-lime font-serif text-sm font-bold text-ink">
           T

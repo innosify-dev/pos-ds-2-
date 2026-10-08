@@ -5,6 +5,7 @@ import { DashboardScreen } from '../screens/dashboard/DashboardScreen.jsx';
 import { ProductsScreen } from '../screens/products/ProductsScreen.jsx';
 import { ProductFormScreen } from '../screens/product-form/ProductFormScreen.jsx';
 import { CategoriesScreen } from '../screens/categories/CategoriesScreen.jsx';
+import { BrandsScreen } from '../screens/brands/BrandsScreen.jsx';
 import { RegistersScreen } from '../screens/registers/RegistersScreen.jsx';
 import { RegisterFormScreen } from '../screens/register-form/RegisterFormScreen.jsx';
 import { SalesScreen } from '../screens/sales/SalesScreen.jsx';
@@ -29,6 +30,7 @@ export const retailRoutes = [
     <Route path="products/new" element={<ProductFormScreen />} />
     <Route path="products/:productId/edit" element={<ProductFormScreen />} />
     <Route path="categories" element={<CategoriesScreen />} />
+    <Route path="brands" element={<BrandsScreen />} />
     <Route path="registers" element={<RegistersScreen />} />
     <Route path="registers/new" element={<RegisterFormScreen />} />
     <Route path="registers/:registerId/edit" element={<RegisterFormScreen />} />

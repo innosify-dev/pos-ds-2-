@@ -363,7 +363,7 @@ export function ProductFormScreen() {
 
       {error && <p className="text-xs text-danger">{error}</p>}
 
-      <div className="fixed bottom-0 left-52 right-0 z-10 flex items-center justify-between gap-2.5 border-t border-border bg-surface px-5 py-3">
+      <div className="fixed bottom-0 left-56 right-0 z-10 flex items-center justify-between gap-2.5 border-t border-border bg-surface px-5 py-3">
         <Button variant="outline" onClick={() => navigate('/retail/products')}>
           Cancel
         </Button>

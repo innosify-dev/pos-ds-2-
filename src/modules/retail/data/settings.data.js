@@ -51,4 +51,6 @@ export const storeProfile = {
   gstNumber: '33AABCT1234K1Z5',
   currency: '₹ INR',
   address: '12, Kumbakonam Road, Thanjavur',
+  openingTime: '10:00',
+  closingTime: '21:00',
 };
