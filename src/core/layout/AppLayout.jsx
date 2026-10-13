@@ -1,5 +1,6 @@
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar.jsx';
+import { ShellProvider } from './ShellContext.jsx';
 
 /**
  * Root application layout shell.
@@ -9,16 +10,18 @@ import { Sidebar } from './Sidebar.jsx';
  */
 export function AppLayout() {
   return (
-    <div className="flex h-screen bg-sidebar">
-      <Sidebar />
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-canvas">
-          <main className="min-h-0 flex-1 overflow-auto">
-            <Outlet />
-          </main>
+    <ShellProvider>
+      <div className="flex h-screen overflow-hidden bg-sidebar">
+        <Sidebar />
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-canvas">
+            <main className="min-h-0 flex-1 overflow-auto">
+              <Outlet />
+            </main>
+          </div>
         </div>
       </div>
-    </div>
+    </ShellProvider>
   );
 }
 

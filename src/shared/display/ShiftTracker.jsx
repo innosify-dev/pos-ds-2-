@@ -12,7 +12,7 @@ function formatElapsed(totalSeconds) {
  * Live elapsed-time tracker with pause / resume / stop.
  * Used for shift tracking on the dashboard.
  */
-export function ShiftTracker({ title = 'Shift Tracker', className }) {
+export function ShiftTracker({ title = 'Shift Tracker', className, compact = false }) {
   const [seconds, setSeconds] = useState(0);
   const [running, setRunning] = useState(false);
   const interval = useRef(null);
@@ -24,24 +24,25 @@ export function ShiftTracker({ title = 'Shift Tracker', className }) {
   }, [running]);
 
   return (
-    <div className={cn('flex flex-col gap-3 rounded-lg bg-plum p-4 text-content-inverse', className)}>
+    <div className={cn('premium-card flex flex-col text-content', compact ? 'gap-2 p-3' : 'gap-3 p-4', className)}>
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium opacity-80">{title}</span>
+        <span className="text-sm font-medium text-content">{title}</span>
         {running && (
-          <span className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide opacity-80">
-            <span className="h-1.5 w-1.5 animate-signal-pulse rounded-full bg-gold" />
+          <span className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-success">
+            <span className="h-1.5 w-1.5 animate-signal-pulse rounded-full bg-success" />
             Live
           </span>
         )}
       </div>
 
-      <p className="text-4xl font-semibold tabular-nums">{formatElapsed(seconds)}</p>
+      <p className={cn('font-semibold tabular-nums text-content', compact ? 'text-xl' : 'text-3xl')}>{formatElapsed(seconds)}</p>
+      <p className="text-xs text-content-muted">This timer stays in this browser tab. It is not saved as attendance.</p>
 
       <div className="flex gap-2">
         <button
           type="button"
           onClick={() => setRunning((value) => !value)}
-          className="flex h-10 flex-1 items-center justify-center gap-2 rounded-full bg-ivory text-sm font-medium text-plum transition-transform hover:scale-[1.02] active:scale-95"
+          className={cn('flex flex-1 items-center justify-center gap-2 rounded-lg bg-accent text-sm font-medium text-content-inverse transition hover:bg-accent-hover', compact ? 'h-8' : 'h-10')}
         >
           {running ? (
             <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
@@ -63,7 +64,7 @@ export function ShiftTracker({ title = 'Shift Tracker', className }) {
             setSeconds(0);
           }}
           disabled={seconds === 0}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-danger text-white transition-transform hover:scale-[1.02] active:scale-95 disabled:pointer-events-none disabled:opacity-40"          aria-label="Stop and reset"
+          className={cn('flex items-center justify-center rounded-lg bg-danger text-white transition hover:brightness-95 disabled:pointer-events-none disabled:opacity-40', compact ? 'h-8 w-8' : 'h-10 w-10')}          aria-label="Stop and reset"
         >
           <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
             <rect x="6" y="6" width="12" height="12" rx="2" />

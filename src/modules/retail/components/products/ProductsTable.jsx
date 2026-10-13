@@ -1,6 +1,6 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@shared/tables/Table';
 import { EmptyState } from '@shared/feedback/EmptyState';
-import { formatPrice } from '@modules/retail/data/products.data.js';
+import { formatInr } from '@modules/retail/data/products.data.js';
 import { StatusPill } from './ProductsToolbar.jsx';
 import { cn } from '@utils/cn';
 
@@ -12,10 +12,10 @@ function ActionButton({ title, onClick, children, tone }) {
       aria-label={title}
       onClick={onClick}
       className={cn(
-        'rounded-md p-1.5 transition-colors',
+        'rounded-lg p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40',
         tone === 'danger'
           ? 'text-content-muted hover:bg-danger-muted hover:text-danger'
-          : 'text-content-muted hover:bg-accent-muted hover:text-accent'
+          : 'text-content-muted hover:bg-accent-muted hover:text-accent',
       )}
     >
       {children}
@@ -23,10 +23,66 @@ function ActionButton({ title, onClick, children, tone }) {
   );
 }
 
+function ProductMark({ product }) {
+  const src = product.image || product.imageUrl || product.details?.image;
+  if (src) {
+    return <img src={src} alt="" className="h-10 w-10 shrink-0 rounded-lg object-cover" />;
+  }
+  const letters = product.name.replace(/[^A-Za-z0-9]/g, '').slice(0, 2).toUpperCase() || 'PR';
+  return (
+    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent-muted text-[11px] font-semibold text-accent">
+      {letters}
+    </span>
+  );
+}
+
+function stockLabel(product) {
+  const qty = Number(product.stock) || 0;
+  const low = Number(product.lowStock);
+  if (qty <= 0) return 'Out of stock';
+  if (Number.isFinite(low) && low > 0 && qty <= low) return 'Low stock';
+  return 'In stock';
+}
+
 const iconCls = 'h-4 w-4';
+
+function RowActions({ product, canManage, onView, onEdit, onDuplicate, onDelete }) {
+  return (
+    <div className="flex items-center justify-end gap-0.5">
+      <ActionButton title="View" onClick={() => onView(product)}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconCls}>
+          <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" />
+          <circle cx="12" cy="12" r="3" />
+        </svg>
+      </ActionButton>
+      {canManage && (
+        <>
+          <ActionButton title="Edit" onClick={() => onEdit(product)}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconCls}>
+              <path d="M4 20h4L19.5 8.5a2.1 2.1 0 0 0-3-3L5 17z" />
+              <path d="m13.5 6.5 3 3" />
+            </svg>
+          </ActionButton>
+          <ActionButton title="Duplicate" onClick={() => onDuplicate(product)}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconCls}>
+              <rect x="9" y="9" width="11" height="11" rx="2" />
+              <path d="M5 15V6a2 2 0 0 1 2-2h9" />
+            </svg>
+          </ActionButton>
+          <ActionButton title="Delete" tone="danger" onClick={() => onDelete(product)}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconCls}>
+              <path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6.5 7l1 13h9l1-13" />
+            </svg>
+          </ActionButton>
+        </>
+      )}
+    </div>
+  );
+}
 
 /**
  * Products table — presentational; selection + row actions bubble up.
+ * On narrow screens the same rows render as cards.
  */
 export function ProductsTable({
   rows,
@@ -39,129 +95,123 @@ export function ProductsTable({
   onDuplicate,
   onDelete,
   onAddProduct,
+  canManage = true,
+  emptyTitle,
+  emptyDescription,
 }) {
   if (rows.length === 0) {
     return (
-      <div className="rounded-lg border border-border">
-        <EmptyState
-          title="No products found"
-          description="Try a different search or clear the filters."
-          actionLabel="Add Product"
-          onAction={onAddProduct}
-        />
-      </div>
+      <EmptyState
+        title={emptyTitle}
+        description={emptyDescription}
+        actionLabel={canManage ? 'Add Product' : undefined}
+        onAction={canManage ? onAddProduct : undefined}
+      />
     );
   }
 
   return (
-    <Table>
-      <TableHead>
-        <TableRow>
-          <TableHeader className="w-10 px-2">
-            <input
-              type="checkbox"
-              checked={allOnPageSelected}
-              onChange={onToggleAll}
-              aria-label="Select all products on this page"
-              className="h-4 w-4 accent-brand"
-            />
-          </TableHeader>
-          <TableHeader className="px-2">Product</TableHeader>
-          <TableHeader className="px-2">SKU</TableHeader>
-          <TableHeader className="px-2">Category</TableHeader>
-          <TableHeader className="px-2">Brand</TableHeader>
-          <TableHeader className="px-2">Price</TableHeader>
-          <TableHeader className="px-2">Stock</TableHeader>
-          <TableHeader className="px-2">Status</TableHeader>
-          <TableHeader className="px-2">Returnable</TableHeader>
-          <TableHeader className="px-2">Created Date</TableHeader>
-          <TableHeader className="px-2 text-right">Action</TableHeader>
-        </TableRow>
-      </TableHead>
-      <TableBody>
-        {rows.map((p) => (
-          <TableRow key={p.id}>
-            <TableCell className="px-2">
-              <input
-                type="checkbox"
-                checked={selectedIds.includes(p.id)}
-                onChange={() => onToggleRow(p.id)}
-                aria-label={`Select ${p.name}`}
-                className="h-4 w-4 accent-brand"
-              />
-            </TableCell>
-            <TableCell>
-              <div className="flex items-center gap-2">
-                <span
-                  className={cn(
-                    'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br text-sm font-bold text-white',
-                    p.gradient
-                  )}
-                >
-                  {p.name.charAt(0)}
-                </span>
-                <span className="max-w-36 text-xs font-medium leading-snug">{p.name}</span>
+    <>
+      <ul className="space-y-3 md:hidden">
+        {rows.map((product) => (
+          <li key={product.id} className="premium-card p-3">
+            <div className="flex items-start gap-3">
+              {canManage && (
+                <input
+                  type="checkbox"
+                  checked={selectedIds.includes(product.id)}
+                  onChange={() => onToggleRow(product.id)}
+                  aria-label={`Select ${product.name}`}
+                  className="mt-3 h-4 w-4 accent-brand"
+                />
+              )}
+              <ProductMark product={product} />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-content">{product.name}</p>
+                <p className="mt-0.5 text-xs text-content-muted">{product.sku}{product.barcode ? ` · ${product.barcode}` : ''}</p>
+                <p className="mt-1 text-xs text-content-muted">{product.category || '—'} · {product.brand || '—'}</p>
               </div>
-            </TableCell>
-            <TableCell className="whitespace-nowrap px-2 text-[13px]">{p.sku}</TableCell>
-            <TableCell className="whitespace-nowrap px-2 text-[13px]">{p.category}</TableCell>
-            <TableCell className="whitespace-nowrap px-2 text-[13px]">{p.brand}</TableCell>
-            <TableCell className="whitespace-nowrap px-2 text-[13px] font-medium">{formatPrice(p.price)}</TableCell>
-            <TableCell className="px-2 text-[13px]">{p.stock}</TableCell>
-            <TableCell className="px-2">
-              <StatusPill status={p.status} />
-            </TableCell>
-            <TableCell className="px-2">
-              <span className="flex items-center gap-1.5">
-                <span
-                  className={cn(
-                    'rounded-full px-2 py-0.5 text-[11px] font-medium',
-                    p.returnable ? 'bg-success-muted text-success' : 'border border-border text-content-muted'
-                  )}
-                >
-                  Yes
-                </span>
-                <span
-                  className={cn(
-                    'rounded-full px-2 py-0.5 text-[11px] font-medium',
-                    p.returnable ? 'border border-border text-content-muted' : 'bg-danger-muted text-danger'
-                  )}
-                >
-                  No
-                </span>
-              </span>
-            </TableCell>
-            <TableCell className="whitespace-nowrap px-2 text-[13px]">{p.createdDate}</TableCell>
-            <TableCell className="px-2">
-              <div className="flex items-center justify-end gap-0.5">
-                <ActionButton title="View" onClick={() => onView(p)}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconCls}>
-                    <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" />
-                    <circle cx="12" cy="12" r="3" />
-                  </svg>
-                </ActionButton>
-                <ActionButton title="Edit" onClick={() => onEdit(p)}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconCls}>
-                    <path d="M4 20h4L19.5 8.5a2.1 2.1 0 0 0-3-3L5 17z" />
-                    <path d="m13.5 6.5 3 3" />
-                  </svg>
-                </ActionButton>
-                <ActionButton title="Duplicate" onClick={() => onDuplicate(p)}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconCls}>
-                    <rect x="9" y="9" width="11" height="11" rx="2" />
-                    <path d="M5 15V6a2 2 0 0 1 2-2h9" />
-                  </svg>
-                </ActionButton>
-                <ActionButton title="Delete" tone="danger" onClick={() => onDelete(p)}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconCls}>
-                    <path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6.5 7l1 13h9l1-13" />
-                  </svg>
-                </ActionButton>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span className="text-sm font-semibold tabular-nums">{formatInr(product.price)}</span>
+              <StatusPill status={stockLabel(product)} />
+              <StatusPill status={product.status} />
+              <span className="text-xs text-content-muted">{product.stock} in stock</span>
+              <div className="ml-auto">
+                <RowActions product={product} canManage={canManage} onView={onView} onEdit={onEdit} onDuplicate={onDuplicate} onDelete={onDelete} />
               </div>
-            </TableCell>
-          </TableRow>
+            </div>
+          </li>
         ))}
-      </TableBody>
-    </Table>
+      </ul>
+
+      <div className="hidden md:block">
+        <Table>
+          <TableHead>
+            <TableRow>
+              {canManage && (
+                <TableHeader className="w-10 px-3">
+                  <input
+                    type="checkbox"
+                    checked={allOnPageSelected}
+                    onChange={onToggleAll}
+                    aria-label="Select all products on this page"
+                    className="h-4 w-4 accent-brand"
+                  />
+                </TableHeader>
+              )}
+              <TableHeader>Product</TableHeader>
+              <TableHeader>SKU</TableHeader>
+              <TableHeader>Category</TableHeader>
+              <TableHeader>Brand</TableHeader>
+              <TableHeader>Price</TableHeader>
+              <TableHeader>Stock</TableHeader>
+              <TableHeader>Status</TableHeader>
+              <TableHeader className="text-right">Actions</TableHeader>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {rows.map((product) => (
+              <TableRow key={product.id} className="hover:bg-canvas">
+                {canManage && (
+                  <TableCell className="px-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(product.id)}
+                      onChange={() => onToggleRow(product.id)}
+                      aria-label={`Select ${product.name}`}
+                      className="h-4 w-4 accent-brand"
+                    />
+                  </TableCell>
+                )}
+                <TableCell>
+                  <div className="flex items-center gap-3">
+                    <ProductMark product={product} />
+                    <span className="max-w-[16rem] text-sm font-medium leading-snug">{product.name}</span>
+                  </div>
+                </TableCell>
+                <TableCell className="whitespace-nowrap">
+                  <div className="text-sm">{product.sku}</div>
+                  {product.barcode && <div className="text-xs text-content-muted">{product.barcode}</div>}
+                </TableCell>
+                <TableCell className="whitespace-nowrap">{product.category || '—'}</TableCell>
+                <TableCell className="whitespace-nowrap">{product.brand || '—'}</TableCell>
+                <TableCell className="whitespace-nowrap font-medium tabular-nums">{formatInr(product.price)}</TableCell>
+                <TableCell>
+                  <div className="font-medium tabular-nums">{product.stock}</div>
+                  <div className="mt-1"><StatusPill status={stockLabel(product)} /></div>
+                </TableCell>
+                <TableCell>
+                  <StatusPill status={product.status} />
+                </TableCell>
+                <TableCell>
+                  <RowActions product={product} canManage={canManage} onView={onView} onEdit={onEdit} onDuplicate={onDuplicate} onDelete={onDelete} />
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </>
   );
 }

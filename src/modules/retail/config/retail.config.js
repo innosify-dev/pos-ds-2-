@@ -1,5 +1,5 @@
 export const retailConfig = {
   id: 'retail',
-  name: 'Takshi Silks',
+  name: 'Retail',
   routePrefix: '/retail',
 };

@@ -13,7 +13,7 @@ export function Select({ label, error, className, children, id, ...props }) {
       <select
         id={selectId}
         className={cn(
-          'flex h-10 w-full rounded border border-border bg-surface px-3 text-sm text-content',
+          'flex h-11 w-full rounded-xl border border-border bg-surface px-3.5 text-sm text-content shadow-sm transition',
           'focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20',
           error && 'border-danger',
           className

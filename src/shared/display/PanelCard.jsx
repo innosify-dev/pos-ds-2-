@@ -4,10 +4,14 @@ import { cn } from '@utils/cn';
  * Panel container used by dashboard and analytics cards.
  * Provides the header row (title, subtitle, actions) and a consistent surface.
  */
-export function PanelCard({ title, subtitle, actions, children, className, bodyClassName, delay = 0, style }) {
+export function PanelCard({ title, subtitle, actions, children, className, bodyClassName, delay = 0, style, dense = false }) {
   return (
     <section
-      className={cn('animate-fade-up flex flex-col gap-3 rounded-lg border border-border bg-surface p-4', className)}
+      className={cn(
+        'premium-card animate-fade-up flex flex-col transition duration-200',
+        dense ? 'gap-2 p-3' : 'gap-3 p-5 hover:shadow-[0_16px_36px_rgb(28_27_46/0.08)]',
+        className,
+      )}
       style={{ animationDelay: `${delay}ms`, ...style }}
     >
       {(title || actions) && (

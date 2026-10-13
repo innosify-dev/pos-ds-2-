@@ -12,7 +12,7 @@ const statusTones = {
 /**
  * Team member card — avatar, role, shift progress bar and actions.
  */
-export function TeamMemberCard({ member, index = 0 }) {
+export function TeamMemberCard({ member, index = 0, onMessage, onInvite }) {
   const orders = useCountUp(member.orders, { duration: 1100, delay: 200 + index * 80 });
   const sales = useCountUp(member.sales, { duration: 1300, delay: 260 + index * 80 });
 
@@ -72,10 +72,10 @@ export function TeamMemberCard({ member, index = 0 }) {
       </dl>
 
       <div className="flex gap-2">
-        <Button size="sm" variant="secondary" className="flex-1">
+        <Button size="sm" variant="secondary" className="flex-1" onClick={onMessage}>
           Message
         </Button>
-        <Button size="sm" variant="outline" className="flex-1">
+        <Button size="sm" variant="outline" className="flex-1" onClick={onInvite}>
           Invite
         </Button>
       </div>

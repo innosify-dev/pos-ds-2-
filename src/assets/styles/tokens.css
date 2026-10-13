@@ -1,46 +1,44 @@
-/* Takshi Silks — global design tokens.
-   Single source of truth for the whole admin panel. Every section
-   (dashboard, products, categories, registers, sales, forms, modals…)
-   references these variables via Tailwind — never hardcoded colors. */
+/* Innosify POS design tokens.
+   Default theme is navy, indigo, and neutral gray.
+   An active business overrides accent colors at runtime. */
 
 :root {
   /* Typography */
-  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-sans: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 
   /* Spacing */
   --spacing-shell: 1rem;
   --spacing-sidebar: 16rem;
 
-  /* Radius — soft 14–18px boutique corners.
-     Overridden at runtime by the Appearance > Shape setting. */
+  /* Radius — soft commercial corners. Appearance can still override these. */
   --radius-default: 0.875rem;
-  --radius-lg: 1.125rem;
+  --radius-lg: 1.25rem;
 
-  /* Takshi Silks palette */
-  --cream: #FBF7EF;          /* main application background */
-  --ivory: #FFFCF7;          /* cards and content surfaces */
-  --purple: #6B238F;         /* primary brand / actions */
-  --purple-hover: #571C75;
-  --plum: #42134F;           /* strong contrast */
-  --lavender: #EEE4F5;       /* selected / secondary backgrounds */
-  --gold: #C89B3C;           /* premium highlights, restrained */
-  --gold-muted: #F6ECD2;
-  --warm-border: #E9DED0;
-  --warm-border-strong: #D9C9B4;
-  --charcoal: #211C24;       /* primary text */
-  --warm-gray: #756B75;      /* secondary text */
+  /* Default Innosify palette. A selected business replaces the accent only. */
+  --cream: #F8FAFC;
+  --ivory: #FFFFFF;
+  --purple: #4F46E5;
+  --purple-hover: #4338CA;
+  --plum: #111827;
+  --lavender: #EEF2FF;
+  --gold: #D97706;
+  --gold-muted: #FEF3C7;
+  --warm-border: #E2E8F0;
+  --warm-border-strong: #CBD5E1;
+  --charcoal: #0F172A;
+  --warm-gray: #64748B;
 
-  /* Signal colors — reserved for animation accents (fills, stripes, pulses) */
-  --signal-lime: #7CFF4F;
-  --signal-amber: #FFD84D;
-  --signal-gradient: linear-gradient(90deg, #FFD84D 0%, #7CFF4F 100%);
+  /* Progress fills stay in the accent family. No orange-green stripe. */
+  --signal-lime: #4F46E5;
+  --signal-amber: #818CF8;
+  --signal-gradient: linear-gradient(90deg, #4F46E5 0%, #6366F1 100%);
 
   /* Surface tokens (Tailwind: surface, canvas) */
   --color-canvas: var(--cream);
   --color-surface: var(--ivory);
-  --color-surface-elevated: #FFFDF9;
-  --color-surface-muted: var(--lavender);
+  --color-surface-elevated: #FFFFFF;
+  --color-surface-muted: #F1F5F9;
 
   /* Border tokens */
   --color-border: var(--warm-border);
@@ -51,8 +49,8 @@
   --color-content-muted: var(--warm-gray);
   --color-content-inverse: var(--ivory);
 
-  /* Sidebar shell — always dark, overrideable from Settings > Appearance */
-  --color-sidebar: #0A0A0B;
+  /* Sidebar shell — dark navy. Appearance settings can still override it. */
+  --color-sidebar: #111827;
 
   /* Brand / action tokens */
   --color-accent: var(--purple);
@@ -73,40 +71,40 @@
   --color-signal-amber: var(--signal-amber);
 
   /* Status tokens */
-  --color-success: #287A43;
-  --color-success-muted: #DDF3E3;
-  --color-warning: #A66A00;
-  --color-warning-muted: #FFF0CC;
-  --color-danger: #B42323;
-  --color-danger-muted: #FDE3E3;
+  --color-success: #059669;
+  --color-success-muted: #D1FAE5;
+  --color-warning: #D97706;
+  --color-warning-muted: #FEF3C7;
+  --color-danger: #DC2626;
+  --color-danger-muted: #FEE2E2;
 
   /* RGB channel triplets — required so Tailwind opacity modifiers
      (bg-accent/35, stroke-accent/15…) can resolve an alpha channel. */
-  --rgb-accent: 107 35 143;
-  --rgb-accent-hover: 87 28 117;
-  --rgb-accent-muted: 238 228 245;
-  --rgb-brand: 107 35 143;
-  --rgb-plum: 66 19 79;
-  --rgb-ink: 10 10 11;
-  --rgb-gold: 200 155 60;
-  --rgb-signal-lime: 124 255 79;
-  --rgb-signal-amber: 255 216 77;
-  --rgb-border: 233 222 208;
-  --rgb-border-strong: 217 201 180;
-  --rgb-content: 33 28 36;
-  --rgb-content-muted: 117 107 117;
-  --rgb-surface-muted: 238 228 245;
-  --rgb-success: 40 122 67;
-  --rgb-warning: 166 106 0;
-  --rgb-danger: 180 35 35;
+  --rgb-accent: 79 70 229;
+  --rgb-accent-hover: 67 56 202;
+  --rgb-accent-muted: 238 242 255;
+  --rgb-brand: 79 70 229;
+  --rgb-plum: 17 24 39;
+  --rgb-ink: 17 24 39;
+  --rgb-gold: 217 119 6;
+  --rgb-signal-lime: 79 70 229;
+  --rgb-signal-amber: 129 140 248;
+  --rgb-border: 226 232 240;
+  --rgb-border-strong: 203 213 225;
+  --rgb-content: 15 23 42;
+  --rgb-content-muted: 100 116 139;
+  --rgb-surface-muted: 241 245 249;
+  --rgb-success: 5 150 105;
+  --rgb-warning: 217 119 6;
+  --rgb-danger: 220 38 38;
 }
 
-/* No dark-mode restyling — the Takshi Silks system is warm cream in every mode. */
+/* Appearance mode keeps the same light surfaces. Tenant accent is applied in JS. */
 .dark {
   --color-canvas: var(--cream);
   --color-surface: var(--ivory);
-  --color-surface-elevated: #FFFDF9;
-  --color-surface-muted: var(--lavender);
+  --color-surface-elevated: #FFFFFF;
+  --color-surface-muted: #F1F5F9;
   --color-border: var(--warm-border);
   --color-border-strong: var(--warm-border-strong);
   --color-content: var(--charcoal);
@@ -124,10 +122,10 @@
   --color-cream: var(--cream);
   --color-ivory: var(--ivory);
   --color-lavender: var(--lavender);
-  --color-success: #287A43;
-  --color-success-muted: #DDF3E3;
-  --color-warning: #A66A00;
-  --color-warning-muted: #FFF0CC;
-  --color-danger: #B42323;
-  --color-danger-muted: #FDE3E3;
+  --color-success: #059669;
+  --color-success-muted: #D1FAE5;
+  --color-warning: #D97706;
+  --color-warning-muted: #FEF3C7;
+  --color-danger: #DC2626;
+  --color-danger-muted: #FEE2E2;
 }

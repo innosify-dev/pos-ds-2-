@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@shared/ui/Button';
+import { useTenant } from '@core/tenant/TenantProvider.jsx';
 import { BrandMark, FakeBarcode, FakeQr, formatLabelPrice } from './LabelGraphics.jsx';
 import { loadTemplate, saveTemplateToStorage } from './labelTemplate.js';
 import { PrintPreviewModal } from './PrintPreviewModal.jsx';
@@ -11,7 +12,8 @@ import { TemplateEditorModal } from './TemplateEditorModal.jsx';
  * print preview and template editor dialogs.
  */
 export function LabelPreview({ combos, index, onIndex, productName }) {
-  const [template, setTemplate] = useState(loadTemplate);
+  const { tenant } = useTenant();
+  const [template, setTemplate] = useState(() => loadTemplate(tenant?.id));
   const [printOpen, setPrintOpen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
 
@@ -25,11 +27,11 @@ export function LabelPreview({ combos, index, onIndex, productName }) {
 
   const handleSaveTemplate = (next) => {
     setTemplate(next);
-    saveTemplateToStorage(next);
+    saveTemplateToStorage(next, tenant?.id);
   };
 
   return (
-    <section className="rounded-xl border border-border bg-surface p-5">
+    <section className="premium-card p-5">
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-content">4B. QR Code &amp; Barcode</h3>
         <button

@@ -3,9 +3,13 @@
  */
 
 export const settingsSections = [
-  { id: 'profile', label: 'Profile' },
+  { id: 'profile', label: 'Business profile' },
+  { id: 'tax', label: 'Tax' },
+  { id: 'operations', label: 'Operations' },
+  { id: 'receipt', label: 'Receipt' },
+  { id: 'appearance', label: 'Branding' },
   { id: 'notifications', label: 'Notifications' },
-  { id: 'appearance', label: 'Appearance' },
+  { id: 'data', label: 'Data' },
 ];
 
 export const accentOptions = [

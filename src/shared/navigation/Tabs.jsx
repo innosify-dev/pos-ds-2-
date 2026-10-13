@@ -14,7 +14,7 @@ export function Tabs({ tabs, activeTab, onChange, className, variant = 'underlin
             className={cn(
               'rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors',
               activeTab === tab.id
-                ? 'bg-accent text-content-inverse'
+                ? 'bg-surface text-content shadow-sm ring-1 ring-border'
                 : 'bg-surface-muted text-content-muted hover:text-content'
             )}
           >

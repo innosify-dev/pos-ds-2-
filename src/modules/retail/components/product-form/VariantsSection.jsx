@@ -60,8 +60,8 @@ export function VariantsSection({
   onApplyAll,
 }) {
   return (
-    <section className="rounded-xl border border-border bg-surface p-5">
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-content">4. Product Variants</h3>
+    <section className="premium-card p-5">
+      <h3 className="text-sm font-semibold text-content">Variants</h3>
       <label className="mt-2 flex cursor-pointer items-center gap-2 text-[13px] text-content">
         <input
           type="checkbox"

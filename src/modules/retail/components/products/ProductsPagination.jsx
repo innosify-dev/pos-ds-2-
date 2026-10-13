@@ -37,7 +37,7 @@ export function ProductsPagination({ perPage, onPerPageChange, page, pageCount, 
         </Select>
       </div>
       <span className="text-xs text-content">{rangeLabel}</span>
-      <div className="ml-auto flex items-center gap-1.5">
+      <div className="ml-auto flex max-w-full items-center gap-1.5 overflow-x-auto">
         {pageButton(1, 'First', page === 1)}
         {pageButton(page - 1, 'Previous', page === 1)}
         {numbers.map((n) => pageButton(n, String(n)))}

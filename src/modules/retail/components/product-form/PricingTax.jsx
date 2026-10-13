@@ -21,10 +21,9 @@ export function PricingTax({
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-      <section className="rounded-xl border border-border bg-surface p-5">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-content">
-          5A. Pricing Details <span className="font-normal normal-case text-danger">(Shown only when no variants)</span>
-        </h3>
+      <section className="premium-card p-5">
+        <h3 className="text-sm font-semibold text-content">Pricing</h3>
+        <p className="mt-1 text-xs text-content-muted">Used when this product has no variants.</p>
         {hasVariants ? (
           <p className="mt-3 flex items-start gap-2 rounded-lg bg-surface-elevated p-3 text-xs text-content-muted">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4 shrink-0 text-accent">
@@ -42,8 +41,8 @@ export function PricingTax({
         )}
       </section>
 
-      <section className="rounded-xl border border-border bg-surface p-5">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-content">5B. Tax Information</h3>
+      <section className="premium-card p-5">
+        <h3 className="text-sm font-semibold text-content">Tax</h3>
         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Select label="GST Category / Rate *" value={tax.category} onChange={(e) => onTaxChange('category', e.target.value)}>
             {gstOptions.map((g) => (

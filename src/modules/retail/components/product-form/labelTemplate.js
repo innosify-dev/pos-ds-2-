@@ -79,11 +79,11 @@ export function defaultTemplate() {
   };
 }
 
-const STORAGE_KEY = 'retail:label-template';
+const storageKey = (tenantId) => `innosify.pref.${tenantId || 'default'}.label-template`;
 
-export function loadTemplate() {
+export function loadTemplate(tenantId) {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey(tenantId));
     if (!raw) return defaultTemplate();
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed.elements)) return defaultTemplate();
@@ -93,9 +93,9 @@ export function loadTemplate() {
   }
 }
 
-export function saveTemplateToStorage(template) {
+export function saveTemplateToStorage(template, tenantId) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(template));
+    localStorage.setItem(storageKey(tenantId), JSON.stringify(template));
   } catch {
     // storage unavailable — template still applies for this session
   }

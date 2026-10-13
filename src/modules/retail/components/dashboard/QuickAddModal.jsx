@@ -9,13 +9,14 @@ const categories = ['Kanjivaram', 'Banarasi', 'Pattu', 'Georgette', 'Chanderi'];
  * Quick add product modal — mirrors the reference dashboard's
  * "+ Add New" flow (name, category, start date).
  */
-export function QuickAddModal({ open, onClose, onSubmit }) {
-  const [form, setForm] = useState({ name: '', category: categories[0], startDate: '' });
+export function QuickAddModal({ open, onClose, onSubmit, categories: categoryOptions }) {
+  const choices = categoryOptions?.length ? categoryOptions : categories;
+  const [form, setForm] = useState({ name: '', category: choices[0], startDate: '' });
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (open) {
-      setForm({ name: '', category: categories[0], startDate: '' });
+      setForm({ name: '', category: choices[0] || '', startDate: '' });
       setError('');
     }
   }, [open]);
@@ -47,7 +48,7 @@ export function QuickAddModal({ open, onClose, onSubmit }) {
         <label className="flex flex-col gap-1.5 text-xs font-medium text-content">
           Category
           <Select value={form.category} onChange={(e) => update('category')(e.target.value)}>
-            {categories.map((category) => (
+            {choices.map((category) => (
               <option key={category} value={category}>
                 {category}
               </option>

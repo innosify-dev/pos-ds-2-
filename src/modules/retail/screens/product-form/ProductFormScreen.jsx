@@ -1,9 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@shared/ui/Button';
 import { Input } from '@shared/ui/Input';
 import { Select } from '@shared/ui/Select';
 import { useProducts } from '@modules/retail/store/ProductsContext.jsx';
+import { useTenant } from '@core/tenant/TenantProvider.jsx';
+import { useAuth } from '@core/auth/AuthProvider.jsx';
+import { useDemo } from '@services/demo';
 import {
   AdditionalFeatures,
   ImagesGallery,
@@ -38,6 +41,84 @@ const defaultVariants = [
   { id: 'v-border', name: 'Border', values: ['Gold Zari', 'Silver Zari'] },
 ];
 
+const defaultFeatures = [
+  { id: 'f1', key: 'Saree Length', value: '6.3 Meter' },
+  { id: 'f2', key: 'Blouse Length', value: '0.8 Meter' },
+  { id: 'f3', key: 'Wash Care', value: 'Dry Clean Only' },
+  { id: 'f4', key: 'Occasion', value: 'Wedding / Festive' },
+];
+
+function seedFrom(product) {
+  if (!product) {
+    return {
+      info: defaultInfo,
+      featuresEnabled: false,
+      features: defaultFeatures,
+      hasVariants: true,
+      variants: defaultVariants,
+      combos: [],
+      pricing: { price: '', selling: '', mrp: '' },
+      tax: { category: 'GST 5%', rate: '5', base: '' },
+      other: {
+        status: 'Active',
+        openingStock: '25',
+        warehouse: 'Main Store',
+        supplierRef: '',
+        notes: '',
+        trackInventory: true,
+        lowThreshold: '5',
+        remarks: '',
+      },
+    };
+  }
+  const details = product.details || {};
+  const attributes = product.attributes || {};
+  const variantDefs = Array.isArray(details.variants) ? details.variants : [];
+  return {
+    info: {
+      ...defaultInfo,
+      name: product.name || '',
+      sku: product.sku || '',
+      category: product.category || '',
+      brand: product.brand || '',
+      model: details.model || '',
+      manufacturer: details.manufacturer || '',
+      vendor: details.vendor || '',
+      hsn: details.hsn || product.hsn || '',
+      unit: details.unit || product.unit || '',
+      collection: details.collection || attributes.packSize || '',
+      sareeType: details.sareeType || '',
+      fabric: details.fabric || attributes.fabric || '',
+      description: details.description || '',
+    },
+    featuresEnabled: Array.isArray(details.features) && details.features.length > 0,
+    features: details.features?.length ? details.features : [],
+    hasVariants: variantDefs.length > 0,
+    variants: variantDefs.length ? variantDefs : [],
+    combos: Array.isArray(details.combos) ? details.combos : [],
+    pricing: {
+      price: product.costPrice != null ? String(product.costPrice) : '',
+      selling: product.price != null ? String(product.price) : '',
+      mrp: details.mrp != null ? String(details.mrp) : '',
+    },
+    tax: {
+      category: details.tax?.category || `GST ${product.taxRate ?? 5}%`,
+      rate: String(details.tax?.rate ?? product.taxRate ?? 5),
+      base: details.tax?.base != null ? String(details.tax.base) : '',
+    },
+    other: {
+      status: product.status || 'Active',
+      openingStock: product.stock != null ? String(product.stock) : '0',
+      warehouse: details.other?.warehouse || 'Main Store',
+      supplierRef: details.other?.supplierRef || '',
+      notes: details.other?.notes || '',
+      trackInventory: details.other?.trackInventory ?? true,
+      lowThreshold: String(product.lowStock ?? details.other?.lowThreshold ?? 5),
+      remarks: details.other?.remarks || '',
+    },
+  };
+}
+
 function comboSku(baseSku, values) {
   const base = (baseSku || 'SKU').toUpperCase().replace(/\s+/g, '');
   const suffix = values.map((v) => (v.trim()[0] ?? 'X').toUpperCase()).join('-');
@@ -53,54 +134,68 @@ function cartesian(defs) {
 }
 
 /**
- * Add / Edit product form screen — full product configuration with
+ * Add / Edit product form screen. Full product configuration with
  * gallery, features, variants, labels, pricing, tax, and inventory.
  */
 export function ProductFormScreen() {
   const { productId } = useParams();
   const navigate = useNavigate();
   const { products, addProduct, updateProduct } = useProducts();
+  const { tenant, branch } = useTenant();
+  const { can } = useAuth();
+  const canManage = can('products.manage');
+  const { state } = useDemo();
+  const savingRef = useRef(false);
+  const businessType = tenant?.type || 'retail';
   const isEdit = Boolean(productId);
   const existing = isEdit ? products.find((p) => p.id === productId) : null;
 
   const categories = useMemo(
-    () => [...new Set(products.map((p) => p.category))].sort(),
-    [products]
+    () => [...new Set([
+      ...products.map((p) => p.category),
+      ...state.categories.filter((item) => item.tenantId === tenant?.id).map((item) => item.name),
+    ].filter(Boolean))].sort(),
+    [products, state.categories, tenant?.id],
   );
 
-  const [info, setInfo] = useState(() =>
-    existing
-      ? { ...defaultInfo, name: existing.name, sku: existing.sku, category: existing.category, brand: existing.brand }
-      : defaultInfo
-  );
-  const [mainImage, setMainImage] = useState(null);
-  const [gallery, setGallery] = useState([]);
-  const [featuresEnabled, setFeaturesEnabled] = useState(false);
-  const [features, setFeatures] = useState([
-    { id: 'f1', key: 'Saree Length', value: '6.3 Meter' },
-    { id: 'f2', key: 'Blouse Length', value: '0.8 Meter' },
-    { id: 'f3', key: 'Wash Care', value: 'Dry Clean Only' },
-    { id: 'f4', key: 'Occasion', value: 'Wedding / Festive' },
-  ]);
-  const [hasVariants, setHasVariants] = useState(true);
-  const [variants, setVariants] = useState(defaultVariants);
-  const [combos, setCombos] = useState([]);
+  const initial = seedFrom(existing);
+  const [info, setInfo] = useState(initial.info);
+  const [mainImage, setMainImage] = useState(existing?.image || existing?.details?.image || null);
+  const [gallery, setGallery] = useState(Array.isArray(existing?.details?.gallery) ? existing.details.gallery : []);
+  const [featuresEnabled, setFeaturesEnabled] = useState(initial.featuresEnabled);
+  const [features, setFeatures] = useState(initial.features);
+  const [hasVariants, setHasVariants] = useState(initial.hasVariants);
+  const [variants, setVariants] = useState(initial.variants);
+  const [combos, setCombos] = useState(initial.combos);
   const [removedKeys, setRemovedKeys] = useState([]);
   const [comboIndex, setComboIndex] = useState(0);
   const [applyAll, setApplyAll] = useState({ price: '', selling: '', mrp: '', returnable: '', discount: '' });
-  const [pricing, setPricing] = useState({ price: '', selling: '', mrp: '' });
-  const [tax, setTax] = useState({ category: 'GST 5%', rate: '5', base: '' });
-  const [other, setOther] = useState(() => ({
-    status: existing?.status ?? 'Active',
-    openingStock: existing != null ? String(existing.stock) : '25',
-    warehouse: 'Main Store',
-    supplierRef: '',
-    notes: '',
-    trackInventory: true,
-    lowThreshold: '5',
-    remarks: '',
-  }));
+  const [pricing, setPricing] = useState(initial.pricing);
+  const [tax, setTax] = useState(initial.tax);
+  const [other, setOther] = useState(initial.other);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const next = seedFrom(isEdit ? products.find((item) => item.id === productId) : null);
+    setInfo(next.info);
+    setFeaturesEnabled(next.featuresEnabled);
+    setFeatures(next.features);
+    setHasVariants(next.hasVariants);
+    setVariants(next.variants);
+    setCombos(next.combos);
+    setPricing(next.pricing);
+    setTax(next.tax);
+    setOther(next.other);
+    setError('');
+    setFieldErrors({});
+    setRemovedKeys([]);
+    savingRef.current = false;
+    setSaving(false);
+    // Reload when the route changes. Product edits stay local until save.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productId]);
 
   useEffect(() => {
     if (!hasVariants) {
@@ -128,7 +223,7 @@ export function ProductFormScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasVariants, variants, info.sku]);
 
-  if (isEdit && !existing) {
+  if (!canManage || (isEdit && !existing)) {
     return <Navigate to="/retail/products" replace />;
   }
 
@@ -167,23 +262,29 @@ export function ProductFormScreen() {
   };
 
   const validate = (isDraft) => {
-    if (!info.name.trim()) return 'Product Name is required.';
-    if (isDraft) return '';
-    if (!info.category) return 'Product Category is required.';
-    if (!info.sku.trim()) return 'SKU is required.';
-    if (!info.hsn.trim()) return 'HSN is required.';
-    if (!info.unit) return 'Unit is required.';
-    const taken = products.some((p) => p.sku === info.sku.trim() && p.id !== existing?.id);
-    if (taken) return 'This SKU is already in use.';
-    return '';
+    const fields = {};
+    if (!info.name.trim()) fields.name = 'Product name is required.';
+    if (!isDraft) {
+      if (!info.category) fields.category = 'Product category is required.';
+      if (!info.sku.trim()) fields.sku = 'SKU is required.';
+      if (!info.hsn.trim()) fields.hsn = 'HSN is required.';
+      if (!info.unit) fields.unit = 'Unit is required.';
+      const taken = products.some((p) => p.sku.toLowerCase() === info.sku.trim().toLowerCase() && p.id !== existing?.id);
+      if (info.sku.trim() && taken) fields.sku = 'This SKU is already in use.';
+    }
+    return { message: Object.values(fields)[0] || '', fields };
   };
 
   const persist = (isDraft) => {
-    const message = validate(isDraft);
+    if (savingRef.current) return;
+    const { message, fields } = validate(isDraft);
+    setFieldErrors(fields);
     if (message) {
       setError(message);
       return;
     }
+    savingRef.current = true;
+    setSaving(true);
     const sellingOf = (v) => (v === '' || Number.isNaN(Number(v)) ? 0 : Number(v));
     const values = {
       name: info.name.trim(),
@@ -192,9 +293,12 @@ export function ProductFormScreen() {
       brand: info.brand.trim() || 'Brand',
       price: hasVariants && combos.length > 0 ? sellingOf(combos[0].selling) : sellingOf(pricing.selling),
       stock: Number(other.openingStock) || 0,
+      lowStock: Number(other.lowThreshold) || 0,
+      ...(hasVariants ? {} : { costPrice: sellingOf(pricing.price) }),
       status: isDraft ? 'Draft' : other.status,
-      returnable: true,
+      returnable: existing?.returnable ?? true,
       details: {
+        ...(existing?.details || {}),
         model: info.model,
         manufacturer: info.manufacturer,
         vendor: info.vendor,
@@ -211,96 +315,107 @@ export function ProductFormScreen() {
         other,
       },
     };
-    if (isEdit) updateProduct(existing.id, values);
-    else addProduct(values);
+    const stockByBranch = {
+      ...(existing?.stockByBranch || {}),
+      [branch?.id || 'unassigned']: Number(other.openingStock) || 0,
+    };
+    const result = isEdit
+      ? updateProduct(existing.id, { ...values, stockByBranch })
+      : addProduct({ ...values, stockByBranch: { [branch?.id || 'unassigned']: Number(other.openingStock) || 0 } });
+    if (result && result.ok === false) {
+      savingRef.current = false;
+      setSaving(false);
+      setError(result.error);
+      return;
+    }
     navigate('/retail/products');
   };
 
   const actions = (
     <>
-      <Button variant="outline" onClick={() => persist(true)}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4">
-          <path d="M5 4h11l3 3v13H5z" />
-          <path d="M8 4v5h7V4" />
-        </svg>
-        Save as Draft
-      </Button>
-      <Button variant="outline" onClick={() => navigate('/retail/products')}>
-        Cancel
-      </Button>
-      <Button onClick={() => persist(false)}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4">
-          <path d="M5 4h11l3 3v13H5z" />
-          <path d="M8 4v5h7V4M8 20v-6h8v6" />
-        </svg>
-        Save Product
-      </Button>
+      <Button variant="outline" onClick={() => persist(true)} disabled={saving}>Save as draft</Button>
+      <Button variant="outline" onClick={() => navigate('/retail/products')} disabled={saving}>Cancel</Button>
+      <Button onClick={() => persist(false)} disabled={saving}>{saving ? 'Saving...' : 'Save product'}</Button>
     </>
   );
 
   return (
-    <div className="space-y-4 bg-surface-elevated/50 p-5 pb-24">
+    <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-4 p-4 pb-28 sm:p-6">
       <nav aria-label="Breadcrumb" className="text-xs text-content-muted">
         <Link to="/retail/products" className="hover:text-accent">Products</Link>
         <span className="mx-1.5">/</span>
-        <span>{isEdit ? 'Edit Product' : 'Add Product'}</span>
+        <span className="font-medium text-content">{isEdit ? 'Edit product' : 'Add product'}</span>
       </nav>
 
-      <div className="flex flex-wrap items-start gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-lg font-bold text-content">{isEdit ? 'Edit Product' : 'Add Product'}</h2>
-          <p className="mt-0.5 text-xs text-content-muted">Create and configure a new product</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent">Catalog</p>
+          <h2 className="mt-1 text-2xl font-semibold tracking-tight text-content">{isEdit ? 'Edit product' : 'Add product'}</h2>
+          <p className="mt-1 text-sm text-content-muted">
+            {isEdit ? 'Changes stay in this business. Ownership is not edited here.' : 'Add a product to the current business.'}
+          </p>
         </div>
-        <div className="ml-auto flex flex-wrap items-center gap-2.5">{actions}</div>
+        <div className="hidden flex-wrap items-center gap-2 sm:flex">{actions}</div>
       </div>
 
+      {error && (
+        <p role="alert" className="rounded-xl border border-danger/30 bg-danger-muted px-3 py-2 text-sm text-danger">{error}</p>
+      )}
+
       <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
-        <section className="rounded-xl border border-border bg-surface p-5">
-          <h3 className="mb-4 text-xs font-semibold uppercase tracking-wide text-content">1. Product Information</h3>
+        <section className="premium-card p-5">
+          <h3 className="mb-1 text-sm font-semibold text-content">Basic information</h3>
+          <p className="mb-4 text-xs text-content-muted">Required fields are marked.</p>
           <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
-            <div className="sm:col-span-1">
-              <Input label="Product Name *" value={info.name} onChange={(e) => setInfo({ ...info, name: e.target.value })} placeholder="Kanjivaram Silk Saree" />
-            </div>
-            <div />
-            <Select label="Product Category *" value={info.category} onChange={(e) => setInfo({ ...info, category: e.target.value })}>
+            <Input label="Product name *" value={info.name} error={fieldErrors.name} onChange={(e) => setInfo({ ...info, name: e.target.value })} placeholder="Product name" />
+            {existing?.barcode ? (
+              <Input label="Barcode" value={existing.barcode} readOnly />
+            ) : <div className="hidden sm:block" />}
+            <Select label="Category *" value={info.category} error={fieldErrors.category} onChange={(e) => setInfo({ ...info, category: e.target.value })}>
               <option value="">Select category</option>
               {categories.map((c) => (
                 <option key={c} value={c}>{c}</option>
               ))}
             </Select>
-            <Input label="SKU *" value={info.sku} onChange={(e) => setInfo({ ...info, sku: e.target.value })} placeholder="NALLI-KAN-2024" />
-            <Input label="Product Brand *" value={info.brand} onChange={(e) => setInfo({ ...info, brand: e.target.value })} placeholder="Nalli" />
-            <Select label="Unit *" value={info.unit} onChange={(e) => setInfo({ ...info, unit: e.target.value })}>
+            <Input label="SKU *" value={info.sku} error={fieldErrors.sku} onChange={(e) => setInfo({ ...info, sku: e.target.value })} placeholder="SKU" />
+            <Input label="Brand" value={info.brand} onChange={(e) => setInfo({ ...info, brand: e.target.value })} placeholder="Brand" />
+            <Select label="Unit *" value={info.unit} error={fieldErrors.unit} onChange={(e) => setInfo({ ...info, unit: e.target.value })}>
               <option value="">Select unit</option>
-              {units.map((u) => (
+              {(businessType === 'tiles' ? ['Box', 'Piece', 'Square feet'] : businessType === 'supermarket' ? ['Pack', 'Kg', 'Litre', 'Piece'] : units).map((u) => (
                 <option key={u} value={u}>{u}</option>
               ))}
             </Select>
-            <Input label="Model" value={info.model} onChange={(e) => setInfo({ ...info, model: e.target.value })} placeholder="Kan-Silk-2024" />
-            <Input label="Collection" value={info.collection} onChange={(e) => setInfo({ ...info, collection: e.target.value })} placeholder="Wedding Collection 2024" />
-            <Input label="Product Manufacturer" value={info.manufacturer} onChange={(e) => setInfo({ ...info, manufacturer: e.target.value })} placeholder="Nalli Silks Pvt. Ltd." />
-            <Select label="Saree Type" value={info.sareeType} onChange={(e) => setInfo({ ...info, sareeType: e.target.value })}>
-              <option value="">Select type</option>
-              {sareeTypes.map((t) => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </Select>
-            <Input label="Vendor" value={info.vendor} onChange={(e) => setInfo({ ...info, vendor: e.target.value })} placeholder="Nalli Silks Store" />
-            <Select label="Fabric" value={info.fabric} onChange={(e) => setInfo({ ...info, fabric: e.target.value })}>
-              <option value="">Select fabric</option>
-              {fabrics.map((f) => (
-                <option key={f} value={f}>{f}</option>
-              ))}
-            </Select>
-            <Input label="HSN *" value={info.hsn} onChange={(e) => setInfo({ ...info, hsn: e.target.value })} placeholder="540752" />
-            <div>
-              <span className="mb-1.5 block text-sm font-medium text-content">Description</span>
+            <Input label="Model" value={info.model} onChange={(e) => setInfo({ ...info, model: e.target.value })} />
+            <Input label="Collection" value={info.collection} onChange={(e) => setInfo({ ...info, collection: e.target.value })} />
+            <Input label="Manufacturer" value={info.manufacturer} onChange={(e) => setInfo({ ...info, manufacturer: e.target.value })} />
+            {businessType === 'clothing' && (
+              <Select label="Saree type" value={info.sareeType} onChange={(e) => setInfo({ ...info, sareeType: e.target.value })}>
+                <option value="">Select type</option>
+                {sareeTypes.map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </Select>
+            )}
+            <Input label="Vendor" value={info.vendor} onChange={(e) => setInfo({ ...info, vendor: e.target.value })} />
+            {businessType === 'clothing' && (
+              <Select label="Fabric" value={info.fabric} onChange={(e) => setInfo({ ...info, fabric: e.target.value })}>
+                <option value="">Select fabric</option>
+                {fabrics.map((f) => (
+                  <option key={f} value={f}>{f}</option>
+                ))}
+              </Select>
+            )}
+            {businessType === 'supermarket' && <Input label="Pack size" value={info.collection} onChange={(e) => setInfo({ ...info, collection: e.target.value })} />}
+            {businessType === 'tiles' && <Input label="Pieces per box" value={info.model} onChange={(e) => setInfo({ ...info, model: e.target.value })} />}
+            <Input label="HSN *" value={info.hsn} error={fieldErrors.hsn} onChange={(e) => setInfo({ ...info, hsn: e.target.value })} />
+            <div className="sm:col-span-2">
+              <label htmlFor="product-description" className="mb-1.5 block text-sm font-medium text-content">Description</label>
               <textarea
+                id="product-description"
                 value={info.description}
                 onChange={(e) => setInfo({ ...info, description: e.target.value })}
                 rows={3}
-                placeholder="Traditional Kanjivaram silk saree with zari border and rich pallu."
-                className="w-full rounded border border-border bg-surface px-3 py-2 text-sm text-content placeholder:text-content-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
+                className="w-full rounded-xl border border-border bg-surface px-3.5 py-2 text-sm text-content placeholder:text-content-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
               />
             </div>
           </div>
@@ -358,22 +473,14 @@ export function ProductFormScreen() {
       <OtherInfo
         other={other}
         onChange={(key, value) => setOther((o) => ({ ...o, [key]: value }))}
-        warehouses={['Main Store']}
+        warehouses={[...new Set([other.warehouse, branch?.name || 'Main Store'].filter(Boolean))]}
       />
 
-      {error && <p className="text-xs text-danger">{error}</p>}
-
-      <div className="fixed bottom-0 left-56 right-0 z-10 flex items-center justify-between gap-2.5 border-t border-border bg-surface px-5 py-3">
-        <Button variant="outline" onClick={() => navigate('/retail/products')}>
-          Cancel
-        </Button>
-        <div className="flex items-center gap-2.5">
-          <Button variant="outline" onClick={() => persist(true)}>
-            Save as Draft
-          </Button>
-          <Button onClick={() => persist(false)}>
-            Save Product
-          </Button>
+      <div className="sticky bottom-0 z-10 -mx-4 flex flex-wrap items-center justify-between gap-2 border-t border-border bg-canvas/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6">
+        <Button variant="outline" onClick={() => navigate('/retail/products')} disabled={saving}>Cancel</Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => persist(true)} disabled={saving}>Save as draft</Button>
+          <Button onClick={() => persist(false)} disabled={saving}>{saving ? 'Saving...' : 'Save product'}</Button>
         </div>
       </div>
     </div>

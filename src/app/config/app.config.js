@@ -4,7 +4,7 @@
  */
 
 export const appConfig = {
-  name: 'Takshi Silks POS',
+  name: 'Innosify POS',
   version: '0.1.0',
 };
 

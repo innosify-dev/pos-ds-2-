@@ -95,13 +95,14 @@ export function RegistersTable({ rows, onViewDetails, onToggleSession, onEdit, o
       <TableHead>
         <TableRow>
           <TableHeader className="px-3">Register</TableHeader>
-          <TableHeader className="px-3">Store</TableHeader>
-          <TableHeader className="px-3">Assigned Cashier</TableHeader>
+          <TableHeader className="hidden px-3 md:table-cell">Code</TableHeader>
+          <TableHeader className="px-3">Branch</TableHeader>
+          <TableHeader className="hidden px-3 lg:table-cell">Cashier</TableHeader>
           <TableHeader className="px-3">Status</TableHeader>
           <TableHeader className="px-3">Opening Cash</TableHeader>
           <TableHeader className="px-3">Current Cash</TableHeader>
           <TableHeader className="px-3">Today&apos;s Sales</TableHeader>
-          <TableHeader className="px-3">Opened At</TableHeader>
+          <TableHeader className="hidden px-3 xl:table-cell">Last sale</TableHeader>
           <TableHeader className="px-3 text-right">Actions</TableHeader>
         </TableRow>
       </TableHead>
@@ -111,8 +112,9 @@ export function RegistersTable({ rows, onViewDetails, onToggleSession, onEdit, o
           return (
             <TableRow key={r.id}>
               <TableCell className="whitespace-nowrap px-3 text-[13px] font-medium">{r.name}</TableCell>
+              <TableCell className="hidden whitespace-nowrap px-3 text-[13px] md:table-cell">{r.code || '—'}</TableCell>
               <TableCell className="whitespace-nowrap px-3 text-[13px]">{r.store}</TableCell>
-              <TableCell className="whitespace-nowrap px-3 text-[13px]">{r.cashier ?? 'Unassigned'}</TableCell>
+              <TableCell className="hidden whitespace-nowrap px-3 text-[13px] lg:table-cell">{r.cashier || 'Unassigned'}</TableCell>
               <TableCell className="px-3">
                 <Badge variant={isOpen ? 'success' : 'default'} className="whitespace-nowrap">
                   {r.status}
@@ -121,7 +123,7 @@ export function RegistersTable({ rows, onViewDetails, onToggleSession, onEdit, o
               <TableCell className="whitespace-nowrap px-3 text-[13px]">{formatCash(r.openingCash)}</TableCell>
               <TableCell className="whitespace-nowrap px-3 text-[13px]">{formatCash(r.currentCash)}</TableCell>
               <TableCell className="whitespace-nowrap px-3 text-[13px]">{formatCash(r.todaysSales)}</TableCell>
-              <TableCell className="whitespace-nowrap px-3 text-[13px]">{r.openedAt ?? '—'}</TableCell>
+              <TableCell className="hidden whitespace-nowrap px-3 text-[13px] xl:table-cell">{r.lastActivity || '—'}</TableCell>
               <TableCell className="px-3">
                 <div className="flex items-center justify-end gap-1.5">
                   <OutlineButton tone="accent" title="View Details" onClick={() => onViewDetails(r)}>

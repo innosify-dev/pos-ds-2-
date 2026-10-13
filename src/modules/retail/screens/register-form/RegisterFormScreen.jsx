@@ -3,8 +3,9 @@ import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@shared/ui/Button';
 import { Input } from '@shared/ui/Input';
 import { Select } from '@shared/ui/Select';
-import { knownCashiers } from '@modules/retail/data/registers.data.js';
 import { useRegisters } from '@modules/retail/store/RegistersContext.jsx';
+import { useDemo } from '@services/demo';
+import { useTenant } from '@core/tenant/TenantProvider.jsx';
 import {
   PaymentToggle,
   RegisterPreview,
@@ -28,10 +29,25 @@ export function RegisterFormScreen() {
   const { registerId } = useParams();
   const navigate = useNavigate();
   const { registers, addRegister, updateRegister } = useRegisters();
+  const { state } = useDemo();
+  const { tenant, branches } = useTenant();
   const isEdit = Boolean(registerId);
   const existing = isEdit ? registers.find((r) => r.id === registerId) : null;
 
-  const stores = useMemo(() => [...new Set([...registers.map((r) => r.store), 'Main Store'])], [registers]);
+  const stores = useMemo(
+    () => branches.map((item) => item.name),
+    [branches],
+  );
+  const cashiers = useMemo(
+    () => state.memberships
+      .filter((item) => item.tenantId === tenant?.id && item.status === 'ACTIVE')
+      .map((item) => {
+        const person = state.users.find((user) => user.id === item.userId);
+        return person ? `${person.firstName} ${person.lastName}`.trim() : '';
+      })
+      .filter(Boolean),
+    [state.memberships, state.users, tenant?.id],
+  );
 
   const [form, setForm] = useState(() =>
     existing
@@ -49,7 +65,7 @@ export function RegisterFormScreen() {
       : {
           name: '',
           code: nextCode(registers),
-          store: 'Main Store',
+          store: stores[0] || '',
           cashier: '',
           isActive: true,
           openingCash: '',
@@ -59,6 +75,7 @@ export function RegisterFormScreen() {
         }
   );
   const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
 
   if (isEdit && !existing) {
     return <Navigate to="/retail/registers" replace />;
@@ -67,6 +84,7 @@ export function RegisterFormScreen() {
   const set = (key, value) => setForm((f) => ({ ...f, [key]: value }));
 
   const handleSave = () => {
+    if (saving) return;
     if (!form.name.trim()) {
       setError('Register Name is required.');
       return;
@@ -103,8 +121,13 @@ export function RegisterFormScreen() {
       allowCard: form.allowCard,
       allowUpi: form.allowUpi,
     };
-    if (isEdit) updateRegister(existing.id, values);
-    else addRegister(values);
+    setSaving(true);
+    const result = isEdit ? updateRegister(existing.id, values) : addRegister(values);
+    if (result && result.ok === false) {
+      setSaving(false);
+      setError(result.code === 'PLAN_LIMIT' ? `${result.error} Open Subscription to upgrade this business.` : result.error);
+      return;
+    }
     navigate('/retail/registers');
   };
 
@@ -113,7 +136,7 @@ export function RegisterFormScreen() {
       <Button variant="outline" onClick={() => navigate('/retail/registers')}>
         Cancel
       </Button>
-      <Button onClick={handleSave}>
+      <Button onClick={handleSave} disabled={saving}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4">
           <path d="M5 4h11l3 3v13H5z" />
           <path d="M8 4v5h7V4M8 20v-6h8v6" />
@@ -124,7 +147,7 @@ export function RegisterFormScreen() {
   );
 
   return (
-    <div className="space-y-4 bg-surface-elevated/50 p-5 pb-24">
+    <div className="space-y-4 p-5 pb-24">
       <nav aria-label="Breadcrumb" className="text-xs text-content-muted">
         <Link to="/retail/registers" className="hover:text-accent">Registers</Link>
         <span className="mx-1.5">/</span>
@@ -157,7 +180,7 @@ export function RegisterFormScreen() {
               <span className="text-sm text-content">Assigned Cashier <span className="text-accent">*</span></span>
               <Select value={form.cashier} onChange={(e) => set('cashier', e.target.value)}>
                 <option value="">Select cashier</option>
-                {knownCashiers.map((c) => (
+                {cashiers.map((c) => (
                   <option key={c} value={c}>{c}</option>
                 ))}
               </Select>
@@ -182,6 +205,7 @@ export function RegisterFormScreen() {
                 <p className="mt-1 text-xs text-content-muted">Starting cash available in the register</p>
               </div>
             </div>
+            <p className="mt-3 text-xs text-content-muted">These switches only label the demo register. Checkout payments stay simulated.</p>
             <div className="mt-4 space-y-3 border-t border-border/60 pt-4">
               {[
                 ['Allow Cash Payments', 'allowCash'],

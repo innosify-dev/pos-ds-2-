@@ -23,6 +23,9 @@ export default defineConfig({
   server: {
     port: 4000,
     strictPort: true,
+    allowedHosts: [
+      'seas-dryer-view-archive.trycloudflare.com'
+    ],
   },
   envPrefix: ['VITE_', 'TAURI_'],
   build: {

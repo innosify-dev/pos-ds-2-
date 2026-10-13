@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@shared/ui/Button';
+import { Input } from '@shared/ui/Input';
 import { Select } from '@shared/ui/Select';
 import { ConfirmationDialog } from '@shared/dialogs/ConfirmationDialog';
 import { useRegisters } from '@modules/retail/store/RegistersContext.jsx';
@@ -19,15 +20,20 @@ import {
 export function RegistersScreen() {
   const { registers, deleteRegister, openSession, closeSession } = useRegisters();
   const navigate = useNavigate();
-  const [storeFilter, setStoreFilter] = useState('Main Store');
+  const [storeFilter, setStoreFilter] = useState('all');
+  const [query, setQuery] = useState('');
   const [detailsRegister, setDetailsRegister] = useState(null);
   const [openTarget, setOpenTarget] = useState(null);
   const [closeTarget, setCloseTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
 
   const stores = useMemo(() => [...new Set(registers.map((r) => r.store))], [registers]);
-  const effectiveStore = stores.includes(storeFilter) ? storeFilter : stores[0];
-  const visible = registers.filter((r) => r.store === effectiveStore);
+  const needle = query.trim().toLowerCase();
+  const visible = registers.filter((r) => {
+    const inBranch = storeFilter === 'all' || r.store === storeFilter;
+    const text = `${r.name} ${r.code || ''} ${r.cashier || ''}`.toLowerCase();
+    return inBranch && (!needle || text.includes(needle));
+  });
 
   const total = visible.length;
   const openCount = visible.filter((r) => r.status === 'Open').length;
@@ -56,7 +62,7 @@ export function RegistersScreen() {
   };
 
   return (
-    <div className="space-y-4 bg-surface-elevated/50 p-5">
+    <div className="space-y-4 p-5">
       <nav aria-label="Breadcrumb" className="text-xs text-content-muted">
         <Link to="/retail/dashboard" className="hover:text-accent">Dashboard</Link>
         <span className="mx-1.5">/</span>
@@ -66,11 +72,15 @@ export function RegistersScreen() {
       <div className="flex flex-wrap items-start gap-3">
         <div>
           <h2 className="text-lg font-bold text-content">Registers</h2>
-          <p className="mt-0.5 text-xs text-content-muted">Manage store registers and cash sessions</p>
+          <p className="mt-0.5 text-xs text-content-muted">Checkout counters for the branches you can manage. Cash totals come from demo sales.</p>
         </div>
-        <div className="ml-auto flex items-center gap-2.5">
-          <div className="w-44">
-            <Select value={effectiveStore} onChange={(e) => setStoreFilter(e.target.value)} aria-label="Store">
+        <div className="ml-auto flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+          <div className="min-w-0 sm:w-52">
+            <Input aria-label="Search registers" placeholder="Search name or code" value={query} onChange={(e) => setQuery(e.target.value)} />
+          </div>
+          <div className="sm:w-44">
+            <Select value={storeFilter} onChange={(e) => setStoreFilter(e.target.value)} aria-label="Branch">
+              <option value="all">All branches</option>
               {stores.map((s) => (
                 <option key={s} value={s}>{s}</option>
               ))}
@@ -87,18 +97,23 @@ export function RegistersScreen() {
 
       <RegisterStats total={total} open={openCount} closed={closedCount} sales={sales} />
 
-      <div className="rounded-xl border border-border bg-surface p-4">
-        <RegistersTable
-          rows={visible}
-          onViewDetails={setDetailsRegister}
-          onToggleSession={handleToggleSession}
-          onEdit={(r) => navigate(`${r.id}/edit`)}
-          onDelete={setDeleteTarget}
-        />
-        <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-border/60 pt-3 text-xs text-content-muted">
-          <span>Showing 1 to {visible.length} of {visible.length} registers</span>
+      {visible.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-border bg-surface px-6 py-10 text-center">
+          <h3 className="text-sm font-semibold text-content">No registers configured for this branch.</h3>
+          <p className="mt-1 text-xs text-content-muted">Add a register when this business should take bills at a counter.</p>
         </div>
-      </div>
+      ) : (
+        <div className="min-w-0">
+          <RegistersTable
+            rows={visible}
+            onViewDetails={setDetailsRegister}
+            onToggleSession={handleToggleSession}
+            onEdit={(r) => navigate(`${r.id}/edit`)}
+            onDelete={setDeleteTarget}
+          />
+          <p className="mt-3 text-xs text-content-muted">Showing {visible.length} of {registers.length} registers on your branches.</p>
+        </div>
+      )}
 
       <RegisterDetailsModal
         open={Boolean(detailsRegister)}

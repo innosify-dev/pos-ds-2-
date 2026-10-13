@@ -85,7 +85,10 @@ function TreeNode({ node, depth, expandedIds, selectedId, onToggle, onSelect }) 
  */
 export function CategoryTree({ nodes, expandedIds, selectedId, onToggle, onSelect }) {
   return (
-    <div role="tree" aria-label="Category hierarchy" className="space-y-0.5">
+      <div role="tree" aria-label="Category hierarchy" className="space-y-0.5">
+      {nodes.length === 0 && (
+        <p className="px-2 py-6 text-sm text-content-muted">No categories in this business yet.</p>
+      )}
       {nodes.map((node) => (
         <TreeNode
           key={node.id}

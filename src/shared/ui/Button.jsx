@@ -2,13 +2,13 @@ import { cva } from 'class-variance-authority';
 import { cn } from '@utils/cn';
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 rounded font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
+  'inline-flex items-center justify-center gap-2 rounded-xl font-semibold tracking-tight transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
-        primary: 'bg-accent text-content-inverse hover:bg-accent-hover focus-visible:ring-accent',
-        secondary: 'border border-brand/30 bg-cream text-brand hover:bg-lavender focus-visible:ring-brand',
-        outline: 'border border-border bg-surface text-content hover:bg-surface-muted focus-visible:ring-border-strong',
+        primary: 'bg-accent text-content-inverse shadow-sm hover:bg-accent-hover focus-visible:ring-accent',
+        secondary: 'border border-brand/20 bg-surface text-brand shadow-sm hover:bg-accent-muted focus-visible:ring-brand',
+        outline: 'border border-border bg-surface text-content shadow-sm hover:border-accent/30 hover:bg-surface-muted focus-visible:ring-border-strong',
         ghost: 'text-content-muted hover:bg-surface-muted hover:text-content focus-visible:ring-border',
         danger: 'bg-danger text-content-inverse hover:opacity-90 focus-visible:ring-danger',
         success: 'bg-success text-content-inverse hover:opacity-90 focus-visible:ring-success',

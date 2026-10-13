@@ -1,58 +1,45 @@
 import { Button } from '@shared/ui/Button';
 import { PanelCard } from '@shared/display/PanelCard';
-import { cn } from '@utils/cn';
-
-const statusTones = {
-  success: 'bg-success',
-  warning: 'bg-warning',
-  muted: 'bg-border-strong',
-};
 
 /**
- * Staff on duty — team collaboration panel with per-person status
- * and message / invite actions.
+ * People assigned to the active business. Presence is not inferred.
  */
-export function StaffOnDuty({ members = [], delay = 0, className, onMessage, onInvite }) {
+export function StaffOnDuty({ members = [], delay = 0, className, onMessage, onInvite, dense = false }) {
   return (
     <PanelCard
-      title="Staff On Duty"
-      subtitle={`${members.length} members on shift`}
+      title="Assigned staff"
+      subtitle={members.length ? `${members.length} people on this business` : 'No staff assigned yet'}
       delay={delay}
       className={className}
-      actions={
-        <Button size="sm" variant="secondary" onClick={() => onInvite?.()}>
-          + Add Member
+      dense={dense}
+      actions={onInvite ? (
+        <Button size="sm" variant="secondary" onClick={() => onInvite()}>
+          Add member
         </Button>
-      }
+      ) : null}
     >
-      <ul className="flex flex-col">
-        {members.map((member, index) => (
-          <li
-            key={member.id}
-            className="animate-fade-up flex items-center gap-3 border-b border-border/60 py-2 last:border-b-0"
-            style={{ animationDelay: `${delay + 120 + index * 90}ms` }}
-          >
-            <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-muted text-xs font-semibold text-accent">
-              {member.initials}
-              <span
-                className={cn(
-                  'absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-surface',
-                  statusTones[member.tone]
-                )}
-              />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-xs font-medium text-content">{member.name}</span>
-              <span className="block truncate text-[11px] text-content-muted">
-                {member.role} · {member.status}
+      {members.length === 0 ? (
+        <p className={dense ? 'py-2 text-center text-xs text-content-muted' : 'py-6 text-center text-xs text-content-muted'}>Invite staff from Team when you are ready.</p>
+      ) : (
+        <ul className={dense ? 'flex flex-col' : 'flex max-h-64 flex-col overflow-auto'}>
+          {members.map((member) => (
+            <li key={member.id} className={dense ? 'flex items-center gap-2.5 border-b border-border/60 py-1.5 last:border-b-0' : 'flex items-center gap-3 border-b border-border/60 py-2 last:border-b-0'}>
+              <span className={dense ? 'flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent-muted text-[10px] font-semibold text-accent' : 'flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-muted text-xs font-semibold text-accent'}>
+                {member.initials}
               </span>
-            </span>
-            <Button size="sm" variant="ghost" onClick={() => onMessage?.(member)}>
-              Message
-            </Button>
-          </li>
-        ))}
-      </ul>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-xs font-medium text-content">{member.name}</span>
+                <span className="block truncate text-[11px] text-content-muted">
+                  {member.role} · {member.status || 'Assigned'}
+                </span>
+              </span>
+              {onMessage ? (
+                <Button size="sm" variant="ghost" onClick={() => onMessage(member)}>Message</Button>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      )}
     </PanelCard>
   );
 }

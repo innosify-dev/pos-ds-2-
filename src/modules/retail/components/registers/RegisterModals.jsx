@@ -134,12 +134,14 @@ export function RegisterDetailsModal({ open, register, onClose }) {
 
   const rows = [
     ['Register', register.name],
-    ['Store', register.store],
-    ['Assigned Cashier', register.cashier ?? 'Unassigned'],
-    ['Opening Cash', formatCash(register.openingCash)],
-    ['Current Cash', formatCash(register.currentCash)],
-    ["Today's Sales", formatCash(register.todaysSales)],
-    ['Opened At', register.openedAt ?? '—'],
+    ['Code', register.code || '—'],
+    ['Branch', register.store],
+    ['Assigned cashier', register.cashier || 'Unassigned'],
+    ['Opening cash', formatCash(register.openingCash)],
+    ['Cash in drawer', formatCash(register.currentCash)],
+    ["Today's sales", formatCash(register.todaysSales)],
+    ['Opened at', register.openedAt ?? '—'],
+    ['Last sale', register.lastActivity ? `${register.lastInvoice} · ${register.lastActivity}` : 'No sale on this register'],
   ];
 
   return (

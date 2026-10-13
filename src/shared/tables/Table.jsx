@@ -2,7 +2,7 @@ import { cn } from '@utils/cn';
 
 export function Table({ children, className }) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-border">
+    <div className="premium-card overflow-x-auto">
       <table className={cn('w-full text-left text-sm', className)}>{children}</table>
     </div>
   );

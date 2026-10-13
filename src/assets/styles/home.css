@@ -1,0 +1,197 @@
+/* Homepage-only motion. Imported by the public landing screen. */
+
+.home-hero {
+  background:
+    radial-gradient(900px 420px at 12% -10%, rgba(79, 70, 229, 0.45), transparent 60%),
+    radial-gradient(700px 380px at 88% 8%, rgba(34, 211, 238, 0.18), transparent 55%),
+    radial-gradient(600px 500px at 70% 110%, rgba(124, 58, 237, 0.28), transparent 60%),
+    #070b14;
+}
+
+.home-sheen {
+  background-image: linear-gradient(110deg, #e0e7ff 0%, #a5b4fc 28%, #22d3ee 52%, #c4b5fd 78%, #e0e7ff 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: home-sheen 9s ease-in-out infinite;
+}
+
+.home-beam {
+  position: absolute;
+  width: 42%;
+  height: 140%;
+  top: -20%;
+  left: 8%;
+  background: linear-gradient(180deg, transparent, rgba(165, 180, 252, 0.16), transparent);
+  transform: rotate(18deg);
+  animation: home-beam 14s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.home-beam-b {
+  left: auto;
+  right: -6%;
+  animation-delay: -6s;
+  opacity: 0.7;
+}
+
+.home-float {
+  animation: home-float 7s ease-in-out infinite;
+}
+
+.home-float-late {
+  animation-delay: -2.4s;
+}
+
+.home-ken {
+  animation: home-ken 7s ease-out both;
+}
+
+.home-marquee-track {
+  animation: home-marquee 42s linear infinite;
+}
+
+.home-marquee-still {
+  display: none;
+}
+
+.home-marquee:hover .home-marquee-track,
+.home-marquee:focus-within .home-marquee-track {
+  animation-play-state: paused;
+}
+
+.home-story {
+  opacity: 0.55;
+  transition: opacity 240ms ease;
+}
+
+.home-story.is-active {
+  opacity: 1;
+}
+
+.home-bar {
+  transform-origin: bottom;
+  animation: home-bar 1.1s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.home-scan {
+  animation: home-scan 2.4s ease-in-out infinite;
+}
+
+.home-pop {
+  animation: home-pop 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes home-sheen {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes home-beam {
+  0%,
+  100% {
+    transform: rotate(18deg) translateY(0);
+  }
+  50% {
+    transform: rotate(18deg) translateY(4%);
+  }
+}
+
+@keyframes home-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes home-ken {
+  from {
+    transform: scale(1.06);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+@keyframes home-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes home-bar {
+  from {
+    transform: scaleY(0.2);
+    opacity: 0.4;
+  }
+  to {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+@keyframes home-scan {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  70% {
+    transform: translateY(72px);
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes home-pop {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-marquee-motion {
+    display: none;
+  }
+
+  .home-marquee-still {
+    display: grid;
+  }
+
+  .home-sheen,
+  .home-beam,
+  .home-float,
+  .home-float-late,
+  .home-ken,
+  .home-marquee-track,
+  .home-bar,
+  .home-scan,
+  .home-pop,
+  .home-story {
+    animation: none !important;
+    opacity: 1;
+    transform: none;
+  }
+}

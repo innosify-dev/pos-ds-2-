@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { Button } from '@shared/ui/Button';
 import { PanelCard } from '@shared/display/PanelCard';
 import { cn } from '@utils/cn';
@@ -11,7 +12,7 @@ const toneStyles = {
 /**
  * Restock reminders — low stock items with a per-row restock action.
  */
-export function RestockCard({ items = [], delay = 0, className, onRestock }) {
+export function RestockCard({ items = [], delay = 0, className, onRestock, dense = false }) {
   const total = items.length;
 
   return (
@@ -20,9 +21,10 @@ export function RestockCard({ items = [], delay = 0, className, onRestock }) {
       subtitle={total > 0 ? `${total} items need restocking` : 'Stock levels are healthy'}
       delay={delay}
       className={className}
+      dense={dense}
     >
       {items.length === 0 ? (
-        <p className="py-6 text-center text-xs text-content-muted">Nothing to restock right now.</p>
+        <p className={dense ? 'py-2 text-center text-xs text-content-muted' : 'py-8 text-center text-sm text-content-muted'}>You&apos;re all caught up.</p>
       ) : (
         <ul className="flex flex-col gap-2">
           {items.map((item, index) => (
@@ -37,9 +39,13 @@ export function RestockCard({ items = [], delay = 0, className, onRestock }) {
                   {item.left === 0 ? 'Out of stock' : `${item.left} left in stock`} · {item.sku}
                 </p>
               </div>
-              <Button size="sm" variant="secondary" onClick={() => onRestock?.(item)}>
-                {item.action}
-              </Button>
+              {onRestock ? (
+                <Button size="sm" variant="secondary" onClick={() => onRestock(item)}>
+                  {item.action}
+                </Button>
+              ) : (
+                <Link to="/retail/inventory" className="shrink-0 text-xs font-medium text-accent">View stock</Link>
+              )}
             </li>
           ))}
         </ul>

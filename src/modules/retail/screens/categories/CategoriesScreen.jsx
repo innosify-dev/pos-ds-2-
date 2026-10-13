@@ -1,13 +1,17 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@shared/ui/Button';
+import { Input } from '@shared/ui/Input';
 import { ConfirmationDialog } from '@shared/dialogs/ConfirmationDialog';
 import {
   buildCategoryTree,
   collectSubtreeIds,
   flattenCategoryTree,
-  initialCategories,
 } from '@modules/retail/data/categories.data.js';
+import { useDemo } from '@services/demo';
+import { useTenant } from '@core/tenant/TenantProvider.jsx';
+import { useAuth } from '@core/auth/AuthProvider.jsx';
+import { CatalogShortcuts } from '@modules/retail/components/catalog/CatalogShortcuts.jsx';
 import {
   CategoryList,
   CategoryModal,
@@ -16,20 +20,39 @@ import {
 
 /**
  * Categories screen — organize products into categories and subcategories.
- * Module-scoped hierarchy state lives here until the backend API lands.
  */
 export function CategoriesScreen() {
-  const [categories, setCategories] = useState(initialCategories);
-  const [expandedIds, setExpandedIds] = useState(() => initialCategories.map((c) => c.id));
-  const [selectedId, setSelectedId] = useState('c-sarees');
+  const { state, dispatch } = useDemo();
+  const { tenant } = useTenant();
+  const { can } = useAuth();
+  const canManage = can('products.manage');
+  const categories = state.categories
+    .filter((category) => category.tenantId === tenant?.id)
+    .map((category, order) => ({
+      ...category,
+      order,
+      productCount: state.products.filter((product) => product.tenantId === tenant?.id && product.category === category.name).length,
+    }));
+  const [expandedIds, setExpandedIds] = useState([]);
+  const [selectedId, setSelectedId] = useState('');
+  const [query, setQuery] = useState('');
+  useEffect(() => {
+    setExpandedIds(categories.map((category) => category.id));
+    setSelectedId((current) => (categories.some((category) => category.id === current) ? current : categories[0]?.id || ''));
+  }, [tenant?.id]);
   const [modal, setModal] = useState({ open: false, mode: 'create', category: null });
   const [deleteTarget, setDeleteTarget] = useState(null);
 
   const tree = useMemo(() => buildCategoryTree(categories), [categories]);
   const rows = useMemo(() => flattenCategoryTree(tree), [tree]);
+  const visibleRows = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((row) => row.name.toLowerCase().includes(q));
+  }, [rows, query]);
 
   const toggleNode = (id) =>
-    setExpandedIds((ids) => (ids.includes(id) ? ids.filter((i) => i !== id) : [...ids, id]));
+    setExpandedIds((ids) => (ids.includes(id) ? ids.filter((item) => item !== id) : [...ids, id]));
 
   const excludeIds = useMemo(() => {
     if (modal.mode !== 'edit' || !modal.category) return [];
@@ -37,70 +60,70 @@ export function CategoriesScreen() {
   }, [modal, categories]);
 
   const handleSave = ({ name, parentId, status }) => {
-    if (modal.mode === 'edit' && modal.category) {
-      setCategories((list) =>
-        list.map((c) => (c.id === modal.category.id ? { ...c, name, parentId, status } : c))
-      );
-    } else {
-      const siblings = categories.filter((c) => (c.parentId ?? null) === (parentId ?? null));
-      const order = siblings.length;
-      setCategories((list) => [
-        ...list,
-        {
-          id: `c-${Date.now()}`,
-          name,
-          parentId,
-          productCount: 0,
-          status,
-          order,
-        },
-      ]);
-      if (parentId && !expandedIds.includes(parentId)) {
-        setExpandedIds((ids) => [...ids, parentId]);
-      }
-    }
+    dispatch({
+      type: 'category.save',
+      record: {
+        id: modal.mode === 'edit' ? modal.category?.id : undefined,
+        tenantId: tenant.id,
+        name,
+        parentId: parentId || null,
+        status,
+      },
+    });
+    if (parentId && !expandedIds.includes(parentId)) setExpandedIds((ids) => [...ids, parentId]);
     setModal({ open: false, mode: 'create', category: null });
   };
 
-  const handleDelete = (row) => setDeleteTarget(row);
-
   const confirmDelete = () => {
     if (!deleteTarget) return;
-    const ids = collectSubtreeIds(categories, deleteTarget.id);
-    setCategories((list) => list.filter((c) => !ids.includes(c.id)));
-    setExpandedIds((idsList) => idsList.filter((id) => !ids.includes(id)));
-    if (ids.includes(selectedId)) setSelectedId(null);
+    dispatch({ type: 'category.delete', id: deleteTarget.id });
     setDeleteTarget(null);
   };
 
   const deleteCount = deleteTarget ? collectSubtreeIds(categories, deleteTarget.id).length - 1 : 0;
+  const linkedProducts = deleteTarget?.productCount || 0;
 
   return (
-    <div className="space-y-4 bg-surface-elevated/50 p-5">
+    <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-4 p-4 sm:p-6">
       <nav aria-label="Breadcrumb" className="text-xs text-content-muted">
         <Link to="/retail/products" className="hover:text-accent">Products</Link>
         <span className="mx-1.5">/</span>
-        <span className="font-medium text-accent">Categories</span>
+        <span className="font-medium text-content">Categories</span>
       </nav>
 
-      <div className="flex flex-wrap items-start gap-3">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-lg font-bold text-content">Categories</h2>
-          <p className="mt-0.5 text-xs text-content-muted">
-            Organize products into categories and subcategories
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent">Catalog</p>
+          <h2 className="mt-1 text-2xl font-semibold tracking-tight text-content">Categories</h2>
+          <p className="mt-1 text-sm text-content-muted">
+            {categories.length} categor{categories.length === 1 ? 'y' : 'ies'} in this business.
           </p>
         </div>
-        <Button className="ml-auto" onClick={() => setModal({ open: true, mode: 'create', category: null })}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
-            <path d="M12 5v14M5 12h14" strokeLinecap="round" />
-          </svg>
-          New Category
-        </Button>
+        <div className="flex flex-col items-start gap-3 sm:items-end">
+          {canManage && (
+            <Button onClick={() => setModal({ open: true, mode: 'create', category: null })}>
+              Add Category
+            </Button>
+          )}
+          <CatalogShortcuts items={[
+            { to: '/retail/products', label: 'View products' },
+            { to: '/retail/brands', label: 'Brands' },
+          ]} />
+        </div>
+      </header>
+
+      <div className="max-w-sm">
+        <Input
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Search categories"
+          aria-label="Search categories"
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
-        <div className="rounded-xl border border-border bg-surface p-4 lg:col-span-2">
-          <h3 className="mb-3 text-sm font-semibold text-content">Category hierarchy</h3>
+        <div className="premium-card p-4 lg:col-span-2">
+          <h3 className="mb-3 text-sm font-semibold text-content">Hierarchy</h3>
           <CategoryTree
             nodes={tree}
             expandedIds={expandedIds}
@@ -109,12 +132,18 @@ export function CategoriesScreen() {
             onSelect={setSelectedId}
           />
         </div>
-        <div className="rounded-xl border border-border bg-surface p-4 lg:col-span-3">
+        <div className="premium-card p-4 lg:col-span-3">
+          <h3 className="mb-1 text-sm font-semibold text-content">All categories</h3>
           <CategoryList
-            rows={rows}
+            rows={visibleRows}
+            canManage={canManage}
             onAddSub={(row) => setModal({ open: true, mode: 'sub', category: row })}
             onEdit={(row) => setModal({ open: true, mode: 'edit', category: row })}
-            onDelete={handleDelete}
+            onDelete={setDeleteTarget}
+            emptyTitle={categories.length === 0 ? 'No categories yet' : 'No categories match'}
+            emptyDescription={categories.length === 0
+              ? 'Organize your catalog by creating your first category.'
+              : 'Try a different name.'}
           />
         </div>
       </div>
@@ -133,10 +162,10 @@ export function CategoriesScreen() {
         open={Boolean(deleteTarget)}
         onClose={() => setDeleteTarget(null)}
         onConfirm={confirmDelete}
-        title="Delete Category"
+        title="Delete category"
         message={
           deleteTarget
-            ? `Delete "${deleteTarget.name}"${deleteCount > 0 ? ` and ${deleteCount} subcategor${deleteCount === 1 ? 'y' : 'ies'}` : ''}? This cannot be undone.`
+            ? `Delete "${deleteTarget.name}"${deleteCount > 0 ? ` and ${deleteCount} subcategor${deleteCount === 1 ? 'y' : 'ies'}` : ''}?${linkedProducts > 0 ? ` ${linkedProducts} product${linkedProducts === 1 ? '' : 's'} still use this category name.` : ''} This cannot be undone.`
             : ''
         }
         confirmLabel="Delete"

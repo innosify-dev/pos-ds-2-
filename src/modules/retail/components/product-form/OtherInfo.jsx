@@ -10,8 +10,9 @@ export function OtherInfo({ other, onChange, warehouses }) {
   const set = (key, value) => onChange(key, value);
 
   return (
-    <section className="rounded-xl border border-border bg-surface p-5">
-      <h3 className="mb-4 text-xs font-semibold uppercase tracking-wide text-content">6. Other Information</h3>
+    <section className="premium-card p-5">
+      <h3 className="text-sm font-semibold text-content">Inventory and status</h3>
+      <p className="mb-4 mt-1 text-xs text-content-muted">Opening stock is written to the branch selected in the header.</p>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Select label="Product Status" value={other.status} onChange={(e) => set('status', e.target.value)}>
           {productStatuses.map((s) => (

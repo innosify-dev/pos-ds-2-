@@ -7,9 +7,14 @@ const currency = (value) => `₹${value.toLocaleString('en-IN')}`;
  * Top selling products with a staggered entrance and a "New" badge
  * on recently added items.
  */
-export function TopProducts({ items = [], delay = 0, className, onSelect }) {
+export function TopProducts({ items = [], delay = 0, className, onSelect, dense = false }) {
   return (
-    <PanelCard title="Product" subtitle="Best performers this month" delay={delay} className={className}>
+    <PanelCard title="Top products" subtitle="Best performers from recorded sales" delay={delay} className={className} dense={dense}>
+      {items.length === 0 ? (
+        <div className={dense ? 'py-2 text-center' : 'py-8 text-center'}>
+          <p className="text-xs text-content-muted">Product rankings appear after the first recorded sale.</p>
+        </div>
+      ) : (
       <ul className="flex flex-col">
         {items.map((item, index) => (
           <li key={item.id}>
@@ -20,7 +25,7 @@ export function TopProducts({ items = [], delay = 0, className, onSelect }) {
               style={{ animationDelay: `${delay + 120 + index * 90}ms` }}
             >
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-muted text-[11px] font-semibold text-accent">
-                {item.category.slice(0, 2).toUpperCase()}
+                {item.category ? item.category.slice(0, 2).toUpperCase() : 'PR'}
               </span>
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-2">
@@ -35,7 +40,8 @@ export function TopProducts({ items = [], delay = 0, className, onSelect }) {
             </button>
           </li>
         ))}
-      </ul>
+        </ul>
+      )}
     </PanelCard>
   );
 }

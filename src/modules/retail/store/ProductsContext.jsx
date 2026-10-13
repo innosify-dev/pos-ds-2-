@@ -1,57 +1,55 @@
-import { createContext, useCallback, useContext, useMemo, useState } from 'react';
-import { initialProducts } from '../data/products.data.js';
-
-const gradients = [
-  'from-violet-600 to-purple-800',
-  'from-teal-500 to-cyan-700',
-  'from-orange-600 to-rose-700',
-  'from-sky-600 to-indigo-700',
-];
+import { createContext, useCallback, useContext, useMemo } from 'react';
+import { useDemo } from '@services/demo';
+import { useTenant } from '@core/tenant/TenantProvider.jsx';
+import { totalStock } from '@services/demo/engine.js';
 
 const ProductsContext = createContext(null);
 
-/**
- * Module-scoped products state — shared by the products list and the
- * add/edit product form screens. Replaced by services/api/ when the backend lands.
- */
 export function ProductsProvider({ children }) {
-  const [products, setProducts] = useState(initialProducts);
+  const { state, dispatch } = useDemo();
+  const { tenant, branch } = useTenant();
+  const tenantId = tenant?.id;
 
-  const addProduct = useCallback((values) => {
-    const product = {
-      id: `p${Date.now()}`,
-      createdDate: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      gradient: gradients[initialProducts.length % gradients.length],
-      returnable: true,
-      ...values,
+  const products = useMemo(
+    () => state.products
+      .filter((product) => product.tenantId === tenantId)
+      .map((product) => ({ ...product, stock: totalStock(product) })),
+    [state.products, tenantId],
+  );
+
+  const save = useCallback((values) => {
+    const branchId = branch?.id;
+    const stockByBranch = values.stockByBranch || {
+      ...(values.id ? state.products.find((item) => item.id === values.id)?.stockByBranch : {}),
+      [branchId || 'unassigned']: Number(values.stock ?? values.openingStock ?? 0),
     };
-    setProducts((list) => [...list, product]);
-    return product;
-  }, []);
+    return dispatch({
+      type: 'product.save',
+      tenantId,
+      product: {
+          ...values,
+          tenantId,
+          stockByBranch,
+          taxRate: Number(values.taxRate ?? values.details?.tax?.rate ?? 5),
+          costPrice: Number(values.costPrice ?? values.details?.costPrice ?? 0),
+        },
+    });
+  }, [branch?.id, dispatch, state.products, tenantId]);
 
-  const updateProduct = useCallback((id, values) => {
-    setProducts((list) => list.map((p) => (p.id === id ? { ...p, ...values } : p)));
-  }, []);
-
-  const deleteProduct = useCallback((id) => {
-    setProducts((list) => list.filter((p) => p.id !== id));
-  }, []);
-
-  const duplicateProduct = useCallback((product) => {
-    const copy = {
-      ...product,
-      id: `p${Date.now()}`,
-      name: `${product.name} (Copy)`,
-      sku: `${product.sku}-C`,
-      createdDate: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-    };
-    setProducts((list) => [...list, copy]);
-    return copy;
-  }, []);
+  const addProduct = useCallback((values) => save(values), [save]);
+  const updateProduct = useCallback((id, values) => save({ ...state.products.find((item) => item.id === id), ...values, id }), [save, state.products]);
+  const deleteProduct = useCallback((id) => dispatch({ type: 'product.delete', id }), [dispatch]);
+  const duplicateProduct = useCallback((product) => save({
+    ...product,
+    id: undefined,
+    name: `${product.name} (Copy)`,
+    sku: `${product.sku}-C${Date.now().toString(36).slice(-3)}`,
+    barcode: undefined,
+  }), [save]);
 
   const value = useMemo(
     () => ({ products, addProduct, updateProduct, deleteProduct, duplicateProduct }),
-    [products, addProduct, updateProduct, deleteProduct, duplicateProduct]
+    [products, addProduct, updateProduct, deleteProduct, duplicateProduct],
   );
 
   return <ProductsContext.Provider value={value}>{children}</ProductsContext.Provider>;

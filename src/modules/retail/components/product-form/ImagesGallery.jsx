@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { cn } from '@utils/cn';
 
 function Thumb({ src, label, onRemove, size }) {
@@ -34,26 +34,38 @@ function Thumb({ src, label, onRemove, size }) {
 export function ImagesGallery({ productName, main, gallery, onMain, onAdd, onRemove }) {
   const mainRef = useRef(null);
   const galleryRef = useRef(null);
+  const [notice, setNotice] = useState('');
 
-  const pick = (e, handler) => {
-    const files = Array.from(e.target.files ?? []);
-    e.target.value = '';
+  const acceptFile = (file) => {
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) return 'Use a JPG, PNG, or WebP image.';
+    if (file.size > 2 * 1024 * 1024) return 'Each image must be 2 MB or smaller.';
+    return '';
+  };
+
+  const pick = (event, handler) => {
+    const files = Array.from(event.target.files ?? []);
+    event.target.value = '';
+    const problem = files.map(acceptFile).find(Boolean);
+    if (problem) {
+      setNotice(problem);
+      return;
+    }
+    setNotice('');
     handler(files);
   };
 
   return (
-    <section className="rounded-xl border border-border bg-surface p-5">
-      <h3 className="mb-4 text-xs font-semibold uppercase tracking-wide text-content">2. Images Gallery</h3>
+    <section className="premium-card p-5">
+      <h3 className="mb-1 text-sm font-semibold text-content">Media</h3>
+      <p className="mb-4 text-xs text-content-muted">Preview only. Images stay in this form and are not stored with the product.</p>
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         <div>
-          <p className="mb-2 text-xs font-medium text-content">
-            Main Image <span className="text-accent">*</span>
-          </p>
+          <p className="mb-2 text-xs font-medium text-content">Main image</p>
           <Thumb src={main} label={productName || 'Product'} size="aspect-[4/5] w-full" />
           <input
             ref={mainRef}
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/webp"
             className="hidden"
             onChange={(e) => pick(e, (files) => files[0] && onMain(files[0]))}
           />
@@ -67,7 +79,8 @@ export function ImagesGallery({ productName, main, gallery, onMain, onAdd, onRem
             </svg>
             Change Image
           </button>
-          <p className="mt-1.5 text-[11px] text-content-muted">Recommended: 800x1000px (JPG, PNG)</p>
+          <p className="mt-1.5 text-[11px] text-content-muted">JPG, PNG, or WebP. Up to 2 MB.</p>
+          {notice && <p role="alert" className="mt-2 text-xs text-danger">{notice}</p>}
         </div>
         <div>
           <p className="mb-2 text-xs font-medium text-content">More Images (up to 10)</p>
@@ -88,7 +101,7 @@ export function ImagesGallery({ productName, main, gallery, onMain, onAdd, onRem
           <input
             ref={galleryRef}
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/webp"
             multiple
             className="hidden"
             onChange={(e) => pick(e, onAdd)}

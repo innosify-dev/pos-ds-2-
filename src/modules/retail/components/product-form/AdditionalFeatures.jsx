@@ -5,8 +5,8 @@ import { Input } from '@shared/ui/Input';
  */
 export function AdditionalFeatures({ enabled, onToggleEnabled, features, onChange, onAdd, onRemove }) {
   return (
-    <section className="rounded-xl border border-border bg-surface p-5">
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-content">3. Additional Features</h3>
+    <section className="premium-card p-5">
+      <h3 className="text-sm font-semibold text-content">Additional details</h3>
       <label className="mt-2 flex cursor-pointer items-center gap-2 text-[13px] text-content">
         <input
           type="checkbox"
