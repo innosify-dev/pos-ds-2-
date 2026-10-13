@@ -3,19 +3,17 @@ import { Modal } from '@shared/dialogs/Modal';
 import { Button } from '@shared/ui/Button';
 import { Select } from '@shared/ui/Select';
 import { LabelElement } from './LabelGraphics.jsx';
+import { LabelPrintSheet } from './LabelPrintSheet.jsx';
 import { paperSizes, canvasSize } from './labelTemplate.js';
 import { cn } from '@utils/cn';
 
-const printers = ['Zebra ZD420', 'Honeywell PC42t', 'TSC TE200', 'Generic Thermal Printer'];
-const qualities = ['203 DPI', '300 DPI', '600 DPI'];
+const MAX_LABELS = 200;
 
 const defaultSettings = {
   paperLabel: '50mm x 70mm',
-  printer: 'Zebra ZD420',
   orientation: 'portrait',
-  quality: '203 DPI',
   copies: 1,
-  labels: 10,
+  labels: 1,
   printBorder: true,
   cuttingMarks: false,
   layout: 'single',
@@ -33,18 +31,23 @@ function Stepper({ value, onChange, min = 1, max = 999, label }) {
   );
 }
 
-function TemplateLabel({ template, combo, productName, pxPerMm = 3.1, printBorder }) {
-  const { width, height } = canvasSize(template);
+export function TemplateLabel({ template, combo, productName, widthMm, heightMm, printBorder }) {
+  const natural = canvasSize(template);
+  const boxW = widthMm || natural.width;
+  const boxH = heightMm || natural.height;
+  const scale = Math.min(boxW / natural.width, boxH / natural.height);
   return (
     <div
-      className={cn('relative bg-white', printBorder && 'border border-border-strong')}
-      style={{ width: `${width * pxPerMm}px`, height: `${height * pxPerMm}px` }}
+      className={cn('relative overflow-hidden bg-white text-black', printBorder && 'border border-neutral-800')}
+      style={{ width: `${boxW}mm`, height: `${boxH}mm` }}
     >
-      {template.elements.map((el) => (
-        <div key={el.id} className="absolute overflow-hidden" style={{ left: `${el.x * pxPerMm}px`, top: `${el.y * pxPerMm}px`, width: `${el.w * pxPerMm}px`, height: `${el.h * pxPerMm}px` }}>
-          <LabelElement element={el} combo={combo} productName={productName} />
-        </div>
-      ))}
+      <div className="absolute left-0 top-0" style={{ width: `${natural.width}mm`, height: `${natural.height}mm`, transform: `scale(${scale})`, transformOrigin: 'top left' }}>
+        {template.elements.map((el) => (
+          <div key={el.id} className="absolute overflow-hidden" style={{ left: `${el.x}mm`, top: `${el.y}mm`, width: `${el.w}mm`, height: `${el.h}mm` }}>
+            <LabelElement element={el} combo={combo} productName={productName} />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -61,6 +64,7 @@ const layouts = [
 export function PrintPreviewModal({ open, onClose, combos, index, onIndex, productName, template }) {
   const [settings, setSettings] = useState(defaultSettings);
   const [viewMode, setViewMode] = useState('single');
+  const [printJob, setPrintJob] = useState(null);
 
   useEffect(() => {
     if (open) {
@@ -76,9 +80,21 @@ export function PrintPreviewModal({ open, onClose, combos, index, onIndex, produ
   const set = (key, value) => setSettings((s) => ({ ...s, [key]: value }));
   const go = (dir) => total > 0 && onIndex((safeIndex + dir + total) % total);
 
+  const selectedPaper = paperSizes.find((item) => item.label === settings.paperLabel);
+  const oriented = canvasSize({ ...template, orientation: settings.orientation });
+  const labelMm = selectedPaper?.sheet
+    ? oriented
+    : {
+      width: settings.orientation === 'landscape' ? (selectedPaper?.height || oriented.height) : (selectedPaper?.width || oriented.width),
+      height: settings.orientation === 'landscape' ? (selectedPaper?.width || oriented.width) : (selectedPaper?.height || oriented.height),
+    };
   const perPage = settings.layout === 'single' ? 1 : settings.layout === 'multiple' ? 4 : Math.max(1, settings.rows * settings.cols);
-  const totalLabels = settings.copies * settings.labels;
-  const totalPages = Math.max(1, Math.ceil(settings.labels / perPage));
+  const totalLabels = Math.min(MAX_LABELS, settings.copies * settings.labels);
+  const totalPages = Math.max(1, Math.ceil(totalLabels / perPage));
+  const previewCount = Math.min(viewMode === 'single' ? 1 : perPage, totalLabels);
+  const printLabels = combo
+    ? Array.from({ length: totalLabels }, (_, copy) => ({ key: `${combo.barcode || combo.sku || 'label'}-${copy}`, combo }))
+    : [];
 
   return (
     <Modal
@@ -90,7 +106,15 @@ export function PrintPreviewModal({ open, onClose, combos, index, onIndex, produ
       footer={
         <div className="flex items-center justify-between">
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={() => window.print()}>
+          <Button
+            onClick={() => setPrintJob({
+              id: Date.now(),
+              page: selectedPaper?.sheet ? 'a4' : 'label',
+              width: labelMm.width,
+              height: labelMm.height,
+            })}
+            disabled={!combo?.barcode}
+          >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4">
               <path d="M7 8V3.5h10V8M7 17H4.5v-7h15v7H17M7 14.5h10v6H7z" strokeLinejoin="round" />
             </svg>
@@ -159,19 +183,28 @@ export function PrintPreviewModal({ open, onClose, combos, index, onIndex, produ
 
           <div className="flex flex-col items-center rounded-xl border border-border bg-surface-elevated/60 p-4">
             {combo ? (
-              viewMode === 'single' ? (
-                <TemplateLabel template={template} combo={combo} productName={productName} printBorder={settings.printBorder} />
-              ) : (
-                <div className="grid grid-cols-2 gap-3">
-                  {[0, 1, 2, 3].map((i) => (
-                    <TemplateLabel key={i} template={template} combo={combo} productName={productName} pxPerMm={1.5} printBorder={settings.printBorder} />
-                  ))}
-                </div>
-              )
+              <div className={cn('flex max-w-full flex-wrap justify-center gap-3', viewMode === 'grid' && 'grid grid-cols-2')}>
+                {printLabels.slice(0, previewCount).map((item) => (
+                  <div key={item.key} className="origin-top scale-[0.72]">
+                    <TemplateLabel
+                      template={{ ...template, orientation: settings.orientation }}
+                      combo={item.combo}
+                      productName={productName}
+                      widthMm={labelMm.width}
+                      heightMm={labelMm.height}
+                      printBorder={settings.printBorder}
+                    />
+                  </div>
+                ))}
+              </div>
             ) : (
-              <p className="py-10 text-xs text-content-muted">No variants to preview.</p>
+              <p className="py-10 text-xs text-content-muted">Add a product to preview its label.</p>
             )}
-            <p className="mt-2 text-center text-[11px] text-content-muted">Actual size preview<br />{template.width}mm x {template.height}mm</p>
+            <p className="mt-2 text-center text-[11px] text-content-muted">
+              Preview uses the same label data as print.<br />
+              {labelMm.width}mm × {labelMm.height}mm · {totalLabels} label{totalLabels === 1 ? '' : 's'}
+              {settings.copies * settings.labels > MAX_LABELS ? ` (limited to ${MAX_LABELS})` : ''}
+            </p>
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -229,11 +262,9 @@ export function PrintPreviewModal({ open, onClose, combos, index, onIndex, produ
                 <option key={p.label} value={p.label}>{p.label}</option>
               ))}
             </Select>
-            <Select label="Printer" value={settings.printer} onChange={(e) => set('printer', e.target.value)}>
-              {printers.map((p) => (
-                <option key={p} value={p}>{p}</option>
-              ))}
-            </Select>
+            <p className="text-[11px] leading-relaxed text-content-muted">
+              Printing opens your browser dialog. Choose the printer there. Cancelling that dialog does not mark the labels as printed.
+            </p>
             <div>
               <span className="mb-1.5 block text-sm font-medium text-content">Orientation</span>
               <div className="grid grid-cols-2 gap-2">
@@ -249,11 +280,6 @@ export function PrintPreviewModal({ open, onClose, combos, index, onIndex, produ
                 ))}
               </div>
             </div>
-            <Select label="Print Quality" value={settings.quality} onChange={(e) => set('quality', e.target.value)}>
-              {qualities.map((q) => (
-                <option key={q} value={q}>{q}</option>
-              ))}
-            </Select>
             <div className="flex items-center justify-between">
               <span className="text-sm text-content">Copies Per Label</span>
               <Stepper value={settings.copies} onChange={(v) => set('copies', v)} label="copies" />
@@ -280,6 +306,22 @@ export function PrintPreviewModal({ open, onClose, combos, index, onIndex, produ
           </div>
         </div>
       </div>
+      <LabelPrintSheet job={printJob} onDone={() => setPrintJob(null)}>
+        <div className={cn('label-sheet', selectedPaper?.sheet ? 'w-[194mm]' : '')}>
+          {printLabels.map((item, position) => (
+            <div key={item.key} className={!selectedPaper?.sheet && position < printLabels.length - 1 ? 'label-sheet-break' : ''}>
+              <TemplateLabel
+                template={{ ...template, orientation: settings.orientation }}
+                combo={item.combo}
+                productName={productName}
+                widthMm={labelMm.width}
+                heightMm={labelMm.height}
+                printBorder={settings.printBorder}
+              />
+            </div>
+          ))}
+        </div>
+      </LabelPrintSheet>
     </Modal>
   );
 }

@@ -4,10 +4,13 @@
  */
 
 export const paperSizes = [
+  { label: '40mm x 30mm', width: 40, height: 30 },
+  { label: '50mm x 25mm', width: 50, height: 25 },
   { label: '50mm x 30mm', width: 50, height: 30 },
   { label: '50mm x 70mm', width: 50, height: 70 },
   { label: '40mm x 60mm', width: 40, height: 60 },
   { label: '60mm x 90mm', width: 60, height: 90 },
+  { label: 'A4 sheet', width: 210, height: 297, sheet: true },
   { label: 'Custom Size', width: null, height: null },
 ];
 

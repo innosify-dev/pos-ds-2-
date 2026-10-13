@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AppLayout } from '@core/layout';
 import { RequireBusiness, RequirePlatform, RequireTenant } from './guards.jsx';
@@ -15,16 +16,10 @@ import { RetailLayout } from '@modules/retail/layouts/RetailLayout.jsx';
 import { DashboardScreen } from '@modules/retail/screens/dashboard/DashboardScreen.jsx';
 import { CashierDesk } from '@modules/retail/screens/dashboard/CashierDesk.jsx';
 import { InventoryDesk } from '@modules/retail/screens/dashboard/InventoryDesk.jsx';
-import { ProductsScreen } from '@modules/retail/screens/products/ProductsScreen.jsx';
-import { ProductFormScreen } from '@modules/retail/screens/product-form/ProductFormScreen.jsx';
 import { CategoriesScreen } from '@modules/retail/screens/categories/CategoriesScreen.jsx';
 import { BrandsScreen } from '@modules/retail/screens/brands/BrandsScreen.jsx';
-import { RegistersScreen } from '@modules/retail/screens/registers/RegistersScreen.jsx';
 import { RegisterFormScreen } from '@modules/retail/screens/register-form/RegisterFormScreen.jsx';
 import { TeamScreen } from '@modules/retail/screens/team/TeamScreen.jsx';
-import { AnalyticsScreen } from '@modules/retail/screens/analytics/AnalyticsScreen.jsx';
-import { SettingsScreen } from '@modules/retail/screens/settings/SettingsScreen.jsx';
-import { PosScreen } from '@modules/retail/screens/pos/PosScreen.jsx';
 import {
   BranchesScreen,
   CustomersScreen,
@@ -36,24 +31,36 @@ import {
   SubscriptionScreen,
   SuppliersScreen,
 } from '@modules/retail/screens/flows/RetailFlows.jsx';
-import {
-  AuditLogsScreen,
-  PlatformCustomersScreen,
-  PlatformDashboardScreen,
-  PlatformLayout,
-  PlatformLoginScreen,
-  PlatformPaymentsScreen,
-  PlatformSettingsScreen,
-  PlatformSubscriptionsScreen,
-  PlansScreen,
-  SupportScreen,
-  TenantDetailScreen,
-  TenantsScreen,
-} from '@modules/platform/screens/PlatformScreens.jsx';
+
+const PosScreen = lazy(() => import('@modules/retail/screens/pos/PosScreen.jsx').then((mod) => ({ default: mod.PosScreen })));
+const ProductsScreen = lazy(() => import('@modules/retail/screens/products/ProductsScreen.jsx').then((mod) => ({ default: mod.ProductsScreen })));
+const ProductFormScreen = lazy(() => import('@modules/retail/screens/product-form/ProductFormScreen.jsx').then((mod) => ({ default: mod.ProductFormScreen })));
+const AnalyticsScreen = lazy(() => import('@modules/retail/screens/analytics/AnalyticsScreen.jsx').then((mod) => ({ default: mod.AnalyticsScreen })));
+const SettingsScreen = lazy(() => import('@modules/retail/screens/settings/SettingsScreen.jsx').then((mod) => ({ default: mod.SettingsScreen })));
+const RegistersScreen = lazy(() => import('@modules/retail/screens/registers/RegistersScreen.jsx').then((mod) => ({ default: mod.RegistersScreen })));
+const platformScreens = () => import('@modules/platform/screens/PlatformScreens.jsx');
+const pick = (name) => lazy(() => platformScreens().then((mod) => ({ default: mod[name] })));
+const AuditLogsScreen = pick('AuditLogsScreen');
+const PlatformCustomersScreen = pick('PlatformCustomersScreen');
+const PlatformDashboardScreen = pick('PlatformDashboardScreen');
+const PlatformLayout = pick('PlatformLayout');
+const PlatformLoginScreen = pick('PlatformLoginScreen');
+const PlatformPaymentsScreen = pick('PlatformPaymentsScreen');
+const PlatformSettingsScreen = pick('PlatformSettingsScreen');
+const PlatformSubscriptionsScreen = pick('PlatformSubscriptionsScreen');
+const PlansScreen = pick('PlansScreen');
+const SupportScreen = pick('SupportScreen');
+const TenantDetailScreen = pick('TenantDetailScreen');
+const TenantsScreen = pick('TenantsScreen');
+
+function PageFallback() {
+  return <p className="p-6 text-sm text-content-muted" role="status">Loading…</p>;
+}
 
 export function AppRouter() {
   return (
     <BrowserRouter>
+      <Suspense fallback={<PageFallback />}>
       <Routes>
         <Route element={<PublicLayout />}>
           <Route path="/" element={<LandingScreen />} />
@@ -126,6 +133,7 @@ export function AppRouter() {
         <Route path="/unauthorized" element={<UnauthorizedScreen />} />
         <Route path="*" element={<NotFoundScreen />} />
       </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }

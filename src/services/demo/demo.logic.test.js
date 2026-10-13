@@ -217,6 +217,20 @@ describe('customer accounts', () => {
       });
     });
     expect(state.products.some((item) => item.tenantId === 't-takshi' && item.barcode === '8902000000036')).toBe(false);
+    const kept = state.products.find((item) => item.tenantId === 't-takshi');
+    const assigned = applyDemoAction(state, {
+      type: 'product.save',
+      tenantId: 't-takshi',
+      product: { name: 'Internal code sample', sku: 'INN-SAMPLE', price: 100 },
+    });
+    const created = assigned.products.find((item) => item.sku === 'INN-SAMPLE');
+    expect(created.barcode).toMatch(/^INN\d{8}$/);
+    expect(assigned.products.find((item) => item.id === kept.id).barcode).toBe(kept.barcode);
+    expect(() => applyDemoAction(assigned, {
+      type: 'product.save',
+      tenantId: 't-takshi',
+      product: { name: 'Duplicate code', sku: 'INN-SAMPLE-2', barcode: created.barcode, price: 1 },
+    })).toThrow(/Barcode already exists/);
   });
 
   it('stops a branch head from granting owner or platform access and restores missing seed accounts', () => {
@@ -233,5 +247,32 @@ describe('customer accounts', () => {
     expect(restored.users.filter((item) => item.email === 'cashier@demo.takshi.test')).toHaveLength(1);
     expect(restored.users.filter((item) => item.email === 'owner@demo.takshi.test')).toHaveLength(1);
     expect(restored.tenants).toBe(state.tenants);
+  });
+
+  it('keeps one cash expense movement and blocks a second register session', () => {
+    const state = seed();
+    expect(() => applyDemoAction(state, { type: 'register.open', id: 'r-takshi-1', openingCashPaise: 1000 })).toThrow(/already has an open session/);
+    const withExpense = applyDemoAction(state, {
+      type: 'expense.save',
+      tenantId: 't-takshi',
+      branchId: 'b-takshi-main',
+      registerId: 'r-takshi-1',
+      category: 'Packaging',
+      description: 'Bags',
+      amountPaise: 5000,
+      method: 'cash',
+    });
+    expect(withExpense.expenses).toHaveLength(1);
+    expect(withExpense.cashMoves.filter((move) => move.expenseId === withExpense.expenses[0].id)).toHaveLength(1);
+    expect(() => applyDemoAction(withExpense, { type: 'register.close', id: 'r-takshi-1', closingCashPaise: 0 })).toThrow(/reason/);
+    expect(() => applyDemoAction(state, {
+      type: 'sale.create',
+      tenantId: 't-takshi',
+      branchId: 'b-takshi-city',
+      registerId: 'r-takshi-3',
+      cashierId: 'u-cashier',
+      lines: [{ productId: 'p-cotton', qty: 1 }],
+      payments: [{ method: 'cash', amountPaise: 296800 }],
+    })).toThrow(/Open the register/);
   });
 });

@@ -12,6 +12,9 @@ import {
   RegisterStats,
   RegistersTable,
 } from '@modules/retail/components/registers';
+import { RegisterSessionPanel } from '@modules/retail/components/registers/RegisterSessionPanel.jsx';
+import { useTenant } from '@core/tenant/TenantProvider.jsx';
+import { useToast } from '@shared/feedback/Toast.jsx';
 
 /**
  * Registers screen — manage store registers and cash sessions.
@@ -19,6 +22,8 @@ import {
  */
 export function RegistersScreen() {
   const { registers, deleteRegister, openSession, closeSession } = useRegisters();
+  const { branch } = useTenant();
+  const toast = useToast();
   const navigate = useNavigate();
   const [storeFilter, setStoreFilter] = useState('all');
   const [query, setQuery] = useState('');
@@ -46,13 +51,15 @@ export function RegistersScreen() {
   };
 
   const confirmOpen = ({ openingCash, cashier }) => {
-    openSession(openTarget.id, { openingCash, cashier });
-    setOpenTarget(null);
+    const result = openSession(openTarget.id, { openingCash, cashier });
+    toast.push(result?.ok === false ? result.error : `${openTarget.name} is open.`, result?.ok === false ? 'danger' : 'success');
+    if (result?.ok !== false) setOpenTarget(null);
   };
 
-  const confirmClose = ({ closingCash }) => {
-    closeSession(closeTarget.id, { closingCash });
-    setCloseTarget(null);
+  const confirmClose = ({ closingCash, reason }) => {
+    const result = closeSession(closeTarget.id, { closingCash, reason });
+    toast.push(result?.ok === false ? result.error : `${closeTarget.name} is closed.`, result?.ok === false ? 'danger' : 'success');
+    if (result?.ok !== false) setCloseTarget(null);
   };
 
   const confirmDelete = () => {
@@ -96,6 +103,8 @@ export function RegistersScreen() {
       </div>
 
       <RegisterStats total={total} open={openCount} closed={closedCount} sales={sales} />
+
+      <RegisterSessionPanel register={registers.find((item) => item.status === 'Open' && item.branchId === branch?.id) || registers.find((item) => item.status === 'Open')} />
 
       {visible.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border bg-surface px-6 py-10 text-center">

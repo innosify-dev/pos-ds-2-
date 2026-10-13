@@ -46,4 +46,5 @@ export function useDemo() {
   return context;
 }
 
-export const demoMode = import.meta.env.VITE_DEMO_MODE !== 'false';
+/** Demo stays off unless the env flag is exactly true. The local .env sets that flag. */
+export const demoMode = import.meta.env.VITE_DEMO_MODE === 'true';

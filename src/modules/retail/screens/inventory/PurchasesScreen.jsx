@@ -7,6 +7,8 @@ import { useTenant } from '@core/tenant/TenantProvider.jsx';
 import { useToast } from '@shared/feedback/Toast.jsx';
 import { StockBadge } from '@modules/retail/components/inventory/StockBadge.jsx';
 import { formatWhen } from '@modules/retail/components/inventory/inventoryView.js';
+import { returnedPurchaseQty } from '@services/demo/customerFlows.js';
+import { formatPaise } from '@services/demo/money.js';
 
 export function PurchasesScreen() {
   const { state, dispatch } = useDemo();
@@ -24,6 +26,8 @@ export function PurchasesScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [openId, setOpenId] = useState(null);
+  const [returnQty, setReturnQty] = useState({});
+  const [returnReason, setReturnReason] = useState('Damaged goods');
 
   useEffect(() => {
     if (branch?.id) setReceiveBranch(branch.id);
@@ -137,7 +141,26 @@ export function PurchasesScreen() {
                               ))}
                             </ul>
                             {item.note && <p className="mt-1 text-xs text-content-muted">{item.note}</p>}
-                            <p className="mt-1 text-xs text-content-muted">Amount is not stored on this receipt.</p>
+                            <p className="mt-1 text-xs text-content-muted">Receipt totals are not stored. A return uses the product cost on file. Supplier credit notes stay pending.</p>
+                            <div className="mt-2 space-y-2">
+                              {item.lines.map((line, index) => {
+                                const eligible = line.qty - returnedPurchaseQty(state, item.id, index);
+                                return (
+                                  <label key={`${item.id}-ret-${index}`} className="flex items-center justify-between gap-2 text-xs">
+                                    <span>{line.name || 'Item'} · eligible {eligible}</span>
+                                    <input className="w-16 rounded border border-border px-2 py-1" type="number" min="0" max={eligible} value={returnQty[`${item.id}-${index}`] || ''} onChange={(event) => setReturnQty({ ...returnQty, [`${item.id}-${index}`]: event.target.value })} aria-label={`Return quantity for ${line.name || 'item'}`} />
+                                  </label>
+                                );
+                              })}
+                              <Select label="Reason" value={returnReason} onChange={(event) => setReturnReason(event.target.value)}>
+                                {['Damaged goods', 'Wrong item', 'Defective goods', 'Excess quantity', 'Other'].map((reason) => <option key={reason} value={reason}>{reason}</option>)}
+                              </Select>
+                              <Button size="sm" variant="outline" onClick={() => {
+                                const lines = item.lines.map((line, index) => ({ lineIndex: index, qty: Number(returnQty[`${item.id}-${index}`]) || 0 })).filter((line) => line.qty > 0);
+                                const result = dispatch({ type: 'purchase.return', tenantId: tenant.id, purchaseId: item.id, reason: returnReason, lines, clientKey: `pr-${item.id}-${Date.now()}` });
+                                toast.push(result.ok ? 'Purchase return recorded. Supplier credit is pending.' : result.error, result.ok ? 'success' : 'danger');
+                              }}>Return to supplier</Button>
+                            </div>
                           </div>
                         ) : (
                           <button type="button" className="font-medium text-accent" onClick={() => setOpenId(item.id)}>View</button>
@@ -159,6 +182,17 @@ export function PurchasesScreen() {
             </table>
           </div>
         )}
+      </section>
+      <section className="premium-card p-3">
+        <h3 className="text-sm font-semibold text-content">Purchase returns</h3>
+        <p className="text-xs text-content-muted">Stock is reduced at the receipt’s branch. Supplier settlement stays pending.</p>
+        <ul className="mt-2 space-y-2 text-sm">
+          {(state.purchaseReturns || []).filter((item) => item.tenantId === tenant?.id && allowed.has(item.branchId)).map((item) => (
+            <li key={item.id}>
+              {suppliers.find((row) => row.id === item.supplierId)?.name || 'Supplier'} · {item.reason} · {formatPaise(item.amountPaise, tenant?.currency)} · {item.settlement}
+            </li>
+          ))}
+        </ul>
       </section>
     </div>
   );

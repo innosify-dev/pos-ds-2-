@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useMemo } from 'react';
 import { useDemo } from '@services/demo';
 import { useTenant } from '@core/tenant/TenantProvider.jsx';
+import { expectedDrawerPaise } from '@services/demo/drawer.js';
 import { rupeesToPaise } from '@services/demo/money.js';
 
 const RegistersContext = createContext(null);
@@ -16,12 +17,24 @@ function viewOf(register, state) {
   const lastSale = state.sales
     .filter((sale) => sale.registerId === register.id)
     .reduce((latest, sale) => (!latest || sale.createdAt > latest.createdAt ? sale : latest), null);
+  const drawer = register.status === 'Open'
+    ? expectedDrawerPaise({
+      openingCashPaise: register.openingCashPaise,
+      openedAt: register.openedAt,
+      registerId: register.id,
+      sales: state.sales,
+      refunds: state.refunds,
+      cashMoves: state.cashMoves || [],
+    })
+    : null;
   return {
     ...register,
     store: branch?.name ?? 'Branch',
     cashier: cashier ? `${cashier.firstName} ${cashier.lastName}`.trim() : (register.cashierName || ''),
     openingCash: (register.openingCashPaise || 0) / 100,
-    currentCash: register.status === 'Open' ? (register.currentCashPaise || 0) / 100 : (register.currentCashPaise || 0) / 100,
+    currentCash: (drawer ? drawer.expectedPaise : (register.currentCashPaise || 0)) / 100,
+    expectedCash: (drawer ? drawer.expectedPaise : (register.expectedCashPaise || 0)) / 100,
+    drawer,
     todaysSales,
     openedAt: register.openedAt ? new Date(register.openedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : null,
     lastActivity: lastSale
@@ -90,15 +103,14 @@ export function RegistersProvider({ children }) {
     const person = state.users.find((item) => `${item.firstName} ${item.lastName}`.trim() === cashier) || state.users.find((item) => item.firstName === cashier);
     return dispatch({ type: 'register.open', id, openingCashPaise: rupeesToPaise(openingCash || 0), cashierId: person?.id || null });
   }, [dispatch, state.users]);
-  const closeSession = useCallback((id, { closingCash }) => {
-    const register = state.registers.find((item) => item.id === id);
+  const closeSession = useCallback((id, { closingCash, reason }) => {
     return dispatch({
       type: 'register.close',
       id,
       closingCashPaise: rupeesToPaise(closingCash || 0),
-      expectedCashPaise: register?.currentCashPaise || 0,
+      reason,
     });
-  }, [dispatch, state.registers]);
+  }, [dispatch]);
 
   const value = useMemo(
     () => ({ registers, addRegister, updateRegister, deleteRegister, openSession, closeSession }),

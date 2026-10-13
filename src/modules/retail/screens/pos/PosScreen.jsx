@@ -8,7 +8,11 @@ import { demoMode, useDemo } from '@services/demo';
 import { useAuth } from '@core/auth/AuthProvider.jsx';
 import { useTenant } from '@core/tenant/TenantProvider.jsx';
 import { branchStock } from '@services/demo/engine.js';
+import { findProductByScan } from '@services/barcode/codes.js';
+import { loyaltyDiscountPaise, loyaltyProgram } from '@services/demo/customerFlows.js';
 import { formatPaise, quoteCart, rupeesToPaise } from '@services/demo/money.js';
+import { merchantUpiConfig, upiPaymentUri } from '@services/payments/upiIntent.js';
+import { terminalIntegration } from '@services/payments/terminalContract.js';
 import { useToast } from '@shared/feedback/Toast.jsx';
 import './receipt.css';
 
@@ -25,15 +29,64 @@ export function BarcodeImage({ value }) {
   return <svg ref={ref} />;
 }
 
-const payMethods = [
-  ['cash', 'Cash'],
-  ['upi', 'UPI'],
-  ['card', 'Card'],
-  ['split', 'Split'],
-];
+const METHOD_LABELS = {
+  cash: 'Cash',
+  upi: 'UPI',
+  upi_qr: 'UPI QR',
+  debit: 'Debit card',
+  credit: 'Credit card',
+  card: 'Card',
+  split: 'Split',
+  store_credit: 'Store credit',
+};
+
+function paymentLabel(method) {
+  return METHOD_LABELS[method] || method;
+}
+
+function DemoResult({ state, onSuccess, onFail, onCancel, successLabel }) {
+  return (
+    <div>
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" onClick={onSuccess}>{successLabel}</Button>
+        <Button size="sm" variant="outline" onClick={onFail}>Demo failure</Button>
+        <Button size="sm" variant="ghost" onClick={onCancel}>Cancel</Button>
+      </div>
+      {state === 'success' && <p className="mt-2 text-sm" role="status">Demo result recorded. This is not a verified payment.</p>}
+      {state === 'failed' && <p className="mt-2 text-sm text-danger" role="status">Demo failure. The sale was not saved.</p>}
+    </div>
+  );
+}
 
 function money(paise, currency) {
   return formatPaise(paise, currency);
+}
+
+function PaymentQr({ payload }) {
+  const [markup, setMarkup] = useState('');
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    if (!payload?.startsWith('upi://pay?')) {
+      setMarkup('');
+      setFailed(true);
+      return undefined;
+    }
+    let cancelled = false;
+    setFailed(false);
+    setMarkup('');
+    QRCode.toString(payload, { type: 'svg', margin: 1, errorCorrectionLevel: 'M', width: 200 })
+      .then((svg) => {
+        if (cancelled) return;
+        setMarkup(svg);
+      })
+      .catch(() => {
+        if (!cancelled) setFailed(true);
+      });
+    return () => { cancelled = true; };
+  }, [payload]);
+  if (markup) return <div className="mx-auto h-52 w-52 [&_svg]:h-full [&_svg]:w-full" dangerouslySetInnerHTML={{ __html: markup }} />;
+  if (failed) return <p className="text-sm text-content-muted">The QR could not be drawn for this amount.</p>;
+  return <p className="text-sm text-content-muted" role="status">Drawing payment QR…</p>;
 }
 
 export function PosScreen() {
@@ -48,12 +101,20 @@ export function PosScreen() {
   const [cart, setCart] = useState([]);
   const [billDiscount, setBillDiscount] = useState(0);
   const [customerId, setCustomerId] = useState('');
+  const [loyaltyPoints, setLoyaltyPoints] = useState('');
+  const [storeCredit, setStoreCredit] = useState('');
   const [payOpen, setPayOpen] = useState(false);
   const [method, setMethod] = useState('cash');
   const [tender, setTender] = useState('');
-  const [cardSplit, setCardSplit] = useState('');
+  const [splitKind, setSplitKind] = useState('upi');
+  const [splitAmount, setSplitAmount] = useState('');
+  const [reference, setReference] = useState('');
   const [upiState, setUpiState] = useState('idle');
-  const [qr, setQr] = useState('');
+  const [qrState, setQrState] = useState('idle');
+  const [cardState, setCardState] = useState('idle');
+  const [cardMode, setCardMode] = useState('manual');
+  const [payAttempt, setPayAttempt] = useState(1);
+  const [payError, setPayError] = useState('');
   const [receipt, setReceipt] = useState(null);
   const [paying, setPaying] = useState(false);
   const payingRef = useRef(false);
@@ -68,6 +129,9 @@ export function PosScreen() {
   const held = state.heldBills.filter((bill) => bill.tenantId === tenant?.id);
   const categories = ['All', ...new Set(products.map((product) => product.category).filter(Boolean))];
 
+  const program = loyaltyProgram(state, tenant?.id);
+  const selectedCustomer = customers.find((customer) => customer.id === customerId);
+  const redeemPoints = Math.max(0, Math.min(selectedCustomer?.loyaltyPoints || 0, Math.round(Number(loyaltyPoints) || 0)));
   const quote = useMemo(() => {
     const lines = cart.map((item) => {
       const product = products.find((entry) => entry.id === item.productId);
@@ -80,8 +144,31 @@ export function PosScreen() {
         taxRate: product?.taxRate || 0,
       };
     });
-    return quoteCart(lines, rupeesToPaise(billDiscount || 0));
-  }, [cart, billDiscount, products]);
+    return quoteCart(lines, rupeesToPaise(billDiscount || 0) + loyaltyDiscountPaise(program, redeemPoints));
+  }, [cart, billDiscount, products, program, redeemPoints]);
+  const creditPaise = Math.min(selectedCustomer?.balancePaise || 0, quote.totalPaise, Math.max(0, rupeesToPaise(storeCredit || 0)));
+  const duePaise = Math.max(0, quote.totalPaise - creditPaise);
+
+  const billSignature = `${quote.totalPaise}|${quote.taxPaise}|${quote.discountPaise}|${cart.map((item) => `${item.productId}:${item.qty}:${item.discount || 0}`).join(',')}`;
+  const merchant = merchantUpiConfig(tenant);
+  const qrReference = `B${payAttempt}A${quote.totalPaise}`;
+  const qrUri = merchant
+    ? upiPaymentUri({
+      vpa: merchant.vpa,
+      name: merchant.name,
+      amountPaise: duePaise,
+      reference: qrReference,
+      note: tenant?.invoiceName || tenant?.name || 'Bill',
+    })
+    : null;
+
+  useEffect(() => {
+    setPayAttempt((current) => current + 1);
+    setUpiState('idle');
+    setQrState('idle');
+    setCardState('idle');
+    setPayError('');
+  }, [billSignature]);
 
   const taxBands = quote.lines.reduce((bands, line) => {
     const rate = line.taxRate || 0;
@@ -118,7 +205,7 @@ export function PosScreen() {
     if (!value || scanLock.current) return;
     scanLock.current = true;
     window.setTimeout(() => { scanLock.current = false; }, 80);
-    const product = products.find((item) => item.barcode === value || String(item.sku || '').toLowerCase() === value.toLowerCase());
+    const product = findProductByScan(products, value);
     if (!product) {
       toast.push('No product in this business matches that code.', 'danger');
       barcodeRef.current?.select();
@@ -135,14 +222,32 @@ export function PosScreen() {
     lookup(event.currentTarget.value);
   };
 
+  const allow = {
+    cash: register?.allowCash !== false,
+    upi: register?.allowUpi !== false,
+    card: register?.allowCard !== false,
+  };
+  const methods = [
+    allow.cash && { id: 'cash', label: 'Cash' },
+    allow.upi && { id: 'upi', label: 'UPI' },
+    allow.upi && { id: 'upi_qr', label: 'UPI QR' },
+    allow.card && { id: 'debit', label: 'Debit card' },
+    allow.card && { id: 'credit', label: 'Credit card' },
+    allow.cash && (allow.upi || allow.card) && { id: 'split', label: 'Split' },
+  ].filter(Boolean);
+  const splitChoices = [
+    allow.upi && { id: 'upi', label: 'UPI' },
+    allow.card && { id: 'debit', label: 'Debit card' },
+    allow.card && { id: 'credit', label: 'Credit card' },
+  ].filter(Boolean);
+
   useEffect(() => {
-    if (!payOpen) return undefined;
-    let cancelled = false;
-    QRCode.toDataURL(`innosify-demo://simulated-pay/${tenant?.slug || 'shop'}/${quote.totalPaise}`, { margin: 1, width: 180 }).then((url) => {
-      if (!cancelled) setQr(url);
-    });
-    return () => { cancelled = true; };
-  }, [payOpen, quote.totalPaise, tenant?.slug]);
+    if (!methods.some((item) => item.id === method)) setMethod(methods[0]?.id || 'cash');
+  }, [method, methods]);
+
+  useEffect(() => {
+    if (!splitChoices.some((item) => item.id === splitKind)) setSplitKind(splitChoices[0]?.id || 'upi');
+  }, [splitKind, splitChoices]);
 
   const visible = products.filter((product) => {
     const text = `${product.name} ${product.sku} ${product.barcode}`.toLowerCase();
@@ -198,6 +303,8 @@ export function PosScreen() {
       customerId: customerId || null,
       lines: cart.map((item) => ({ productId: item.productId, qty: item.qty, discountPaise: rupeesToPaise(item.discount || 0) })),
       billDiscountPaise: rupeesToPaise(billDiscount || 0),
+      loyaltyPoints: redeemPoints,
+      storeCreditPaise: creditPaise,
       payments,
     });
     payingRef.current = false;
@@ -211,10 +318,17 @@ export function PosScreen() {
     setCart([]);
     setBillDiscount(0);
     setCustomerId('');
+    setLoyaltyPoints('');
+    setStoreCredit('');
     setPayOpen(false);
     setUpiState('idle');
+    setQrState('idle');
+    setCardState('idle');
     setTender('');
-    toast.push(`Invoice ${sale.invoiceNo} saved. Payment is simulated.`);
+    setSplitAmount('');
+    setReference('');
+    setPayError('');
+    toast.push(`Invoice ${sale.invoiceNo} saved. Payment is simulated and was not verified by a bank.`);
   };
 
   const closeReceipt = () => {
@@ -228,41 +342,134 @@ export function PosScreen() {
     setCart([]);
     setBillDiscount(0);
     setCustomerId('');
+    setLoyaltyPoints('');
+    setStoreCredit('');
     focusBarcode();
   };
 
   const tenderedPaise = rupeesToPaise(tender || 0);
-  const changePreview = tenderedPaise > quote.totalPaise ? tenderedPaise - quote.totalPaise : 0;
+  const splitOtherPaise = rupeesToPaise(splitAmount || 0);
+  const splitRemaining = method === 'split' ? duePaise - splitOtherPaise : duePaise;
+  const changeBase = method === 'split' ? Math.max(0, splitRemaining) : duePaise;
+  const changePreview = tenderedPaise > changeBase ? tenderedPaise - changeBase : 0;
+
+  const openPay = () => {
+    setPayError('');
+    setUpiState('idle');
+    setQrState('idle');
+    setCardState('idle');
+    setPayOpen(true);
+  };
+
+  const closePay = () => {
+    if (payingRef.current) return;
+    setPayOpen(false);
+    setPayError('');
+    setUpiState('idle');
+    setQrState('idle');
+    setCardState('idle');
+  };
+
+  useEffect(() => {
+    if (!payOpen) return undefined;
+    const onKey = (event) => {
+      if (event.key === 'Escape') closePay();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [payOpen]);
+
+  const referenceValue = () => {
+    const value = reference.trim();
+    if (!value) return '';
+    if (!/^[A-Za-z0-9-]{4,35}$/.test(value)) {
+      setPayError('A reference can use 4 to 35 letters, digits, or hyphens. Do not enter a card number.');
+      return null;
+    }
+    return value;
+  };
 
   const pay = () => {
-    if (payingRef.current) return;
-    if (method === 'upi' && upiState !== 'success') {
-      toast.push('Simulate a successful UPI payment before confirming.', 'danger');
-      return;
-    }
+    if (payingRef.current || !cart.length) return;
+    setPayError('');
     if (method === 'cash') {
-      const tendered = rupeesToPaise(tender || 0);
-      if (tendered < quote.totalPaise) {
-        toast.push('Cash received is less than the total.', 'danger');
+      if (tenderedPaise < 0) {
+        setPayError('Cash received cannot be negative.');
         return;
       }
-      checkout([{ method: 'cash', amountPaise: tendered, tenderedPaise: tendered }]);
+      if (tenderedPaise < duePaise) {
+        setPayError('Cash received is less than the amount still due after store credit.');
+        return;
+      }
+      checkout(duePaise > 0 ? [{ method: 'cash', amountPaise: tenderedPaise, tenderedPaise: tenderedPaise }] : []);
+      return;
+    }
+    if (!demoMode) {
+      setPayError('UPI, QR, and card confirmation need a payment provider. This checkout can still record cash.');
+      return;
+    }
+    if (method === 'upi') {
+      if (upiState !== 'success') {
+        setPayError('Use the demo confirmation before saving. This does not contact a UPI app.');
+        return;
+      }
+      const ref = referenceValue();
+      if (ref === null) return;
+      checkout(duePaise > 0 ? [{ method: 'upi', amountPaise: duePaise, ...(ref ? { reference: ref } : {}) }] : []);
+      return;
+    }
+    if (method === 'upi_qr') {
+      if (qrState !== 'success') {
+        setPayError('A live QR is not connected. Record the demo result only after you choose it.');
+        return;
+      }
+      checkout(duePaise > 0 ? [{ method: 'upi_qr', amountPaise: duePaise }] : []);
+      return;
+    }
+    if (method === 'debit' || method === 'credit') {
+      if (cardMode === 'integrated') {
+        setPayError('No integrated terminal is connected. Use manual verification on the external machine, or take cash.');
+        return;
+      }
+      if (cardState !== 'success') {
+        setPayError('Use the demo terminal confirmation. Card numbers are not collected.');
+        return;
+      }
+      const ref = referenceValue();
+      if (ref === null) return;
+      checkout(duePaise > 0 ? [{ method, amountPaise: duePaise, ...(ref ? { reference: ref } : {}) }] : []);
       return;
     }
     if (method === 'split') {
-      const card = rupeesToPaise(cardSplit || 0);
-      const cash = quote.totalPaise - card;
-      if (card <= 0 || cash <= 0) {
-        toast.push('Enter a card amount that leaves a cash balance.', 'danger');
+      if (splitOtherPaise <= 0) {
+        setPayError('Enter the non-cash amount.');
         return;
       }
+      if (splitOtherPaise >= duePaise) {
+        setPayError('The other tender must stay below the amount still due so cash covers the rest.');
+        return;
+      }
+      if (tenderedPaise < splitRemaining) {
+        setPayError('Cash received does not cover the remaining balance.');
+        return;
+      }
+      const needsUpi = splitKind === 'upi' && upiState !== 'success';
+      const needsCard = (splitKind === 'debit' || splitKind === 'credit') && cardState !== 'success';
+      if ((splitKind === 'debit' || splitKind === 'credit') && cardMode === 'integrated') {
+        setPayError('No integrated terminal is connected. Record the card portion only after manual verification.');
+        return;
+      }
+      if (needsUpi || needsCard) {
+        setPayError('Confirm the demo result for the non-cash part before saving.');
+        return;
+      }
+      const ref = splitKind === 'upi' ? referenceValue() : '';
+      if (ref === null) return;
       checkout([
-        { method: 'card', amountPaise: card },
-        { method: 'cash', amountPaise: cash },
+        { method: splitKind, amountPaise: splitOtherPaise, ...(ref ? { reference: ref } : {}) },
+        { method: 'cash', amountPaise: tenderedPaise, tenderedPaise: tenderedPaise },
       ]);
-      return;
     }
-    checkout([{ method, amountPaise: quote.totalPaise }]);
   };
 
   const currency = tenant?.currency;
@@ -327,7 +534,7 @@ export function PosScreen() {
               </ul>
             </div>
           )}
-          <p className="mt-2 text-xs text-content-muted">A USB scanner that types a code and sends Enter will add the product when the barcode field is focused. Physical scanners were not tested.</p>
+          <p className="mt-2 text-xs text-content-muted">A USB scanner that types a code and sends Enter will add the product when the barcode field is focused. Product QR labels need a 2D scanner. This screen does not use the camera. Physical scanners were not tested.</p>
 
           {products.length === 0 && (
             <div className="mt-6 rounded-2xl border border-dashed border-border px-4 py-10 text-center">
@@ -415,9 +622,21 @@ export function PosScreen() {
           <label className="mt-3 block text-xs font-medium text-content" htmlFor="pos-customer">Customer
             <select id="pos-customer" className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20" value={customerId} onChange={(event) => setCustomerId(event.target.value)}>
               <option value="">Walk-in customer</option>
-              {customers.filter((customer) => !customer.walkIn).map((customer) => <option key={customer.id} value={customer.id}>{customer.name}</option>)}
+              {customers.filter((customer) => !customer.walkIn && customer.status !== 'INACTIVE').map((customer) => <option key={customer.id} value={customer.id}>{customer.name}</option>)}
             </select>
           </label>
+          {customerId && (
+            <div className="mt-3 space-y-2 rounded-xl border border-border bg-canvas p-3 text-xs">
+              <p>Points {selectedCustomer?.loyaltyPoints || 0}. Store credit {money(selectedCustomer?.balancePaise || 0, currency)}.</p>
+              {program?.enabled ? (
+                <Input label="Redeem points" type="number" min="0" value={loyaltyPoints} onChange={(event) => setLoyaltyPoints(event.target.value)} hint={`1 point = ${money(program.paisePerPoint, currency)}. Points are used only when the sale is saved.`} />
+              ) : (
+                <p className="text-content-muted">Loyalty is not configured for this business.</p>
+              )}
+              <Input label="Store credit (₹)" type="number" min="0" value={storeCredit} onChange={(event) => setStoreCredit(event.target.value)} hint="Applied only when the sale is saved. Cancelling checkout keeps the balance." />
+              {creditPaise > 0 && <p>Still due after store credit {money(duePaise, currency)}.</p>}
+            </div>
+          )}
           <dl className="mt-4 space-y-2 text-sm">
             <div className="flex justify-between gap-3"><dt className="text-content-muted">Subtotal</dt><dd className="tabular-nums">{money(quote.subtotalPaise, currency)}</dd></div>
             <div className="flex justify-between gap-3"><dt className="text-content-muted">Discount</dt><dd className="tabular-nums">{money(quote.discountPaise, currency)}</dd></div>
@@ -431,7 +650,7 @@ export function PosScreen() {
           </dl>
           <p className="mt-2 text-[11px] leading-relaxed text-content-muted">GST uses the rate stored on each product. This demo does not split CGST, SGST, and IGST.</p>
           <div className="mt-4 grid gap-2">
-            <Button className="w-full" size="lg" onClick={() => setPayOpen(true)} disabled={!cart.length || paying}>Take payment</Button>
+            <Button className="w-full" size="lg" onClick={openPay} disabled={!cart.length || paying}>Take payment</Button>
             <div className="grid grid-cols-2 gap-2">
               <Button variant="outline" onClick={() => { dispatch({ type: 'sale.hold', bill: { id: `hold-${Date.now()}`, tenantId: tenant.id, cart, billDiscount, customerId } }); setCart([]); toast.push('Bill held in this browser.'); }} disabled={!cart.length}>Hold</Button>
               <Button variant="ghost" onClick={clearCart} disabled={!cart.length}>Clear</Button>
@@ -454,42 +673,121 @@ export function PosScreen() {
             <p className="text-xs text-content-muted">Total</p>
             <p className="text-lg font-semibold tabular-nums">{money(quote.totalPaise, currency)}</p>
           </div>
-          <Button onClick={() => setPayOpen(true)} disabled={paying}>Take payment</Button>
+          <Button onClick={openPay} disabled={paying}>Take payment</Button>
         </div>
       )}
 
       {payOpen && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink/40 p-4 backdrop-blur-sm sm:items-center" role="dialog" aria-modal="true" aria-labelledby="pay-title">
-          <div className="w-full max-w-md rounded-3xl border border-border bg-surface p-6 shadow-sm">
-            <h3 id="pay-title" className="text-lg font-semibold">Simulated payment</h3>
-            <p className="mt-1 text-sm text-content-muted">Amount {money(quote.totalPaise, currency)}. This does not contact a bank or UPI app.</p>
-            <div className="mt-4 grid grid-cols-4 gap-2" role="group" aria-label="Payment method">
-              {payMethods.map(([item, label]) => (
-                <button key={item} type="button" aria-pressed={method === item} className={`rounded-xl px-2 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 ${method === item ? 'bg-accent text-content-inverse' : 'bg-canvas text-content'}`} onClick={() => setMethod(item)}>{label}</button>
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink/40 p-3 backdrop-blur-sm sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="pay-title">
+          <div className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-border bg-surface p-5 shadow-sm sm:p-6">
+            <p className="text-xs font-semibold uppercase tracking-wide text-content-muted">Payable</p>
+            <h3 id="pay-title" className="text-3xl font-semibold tabular-nums tracking-tight">{money(duePaise, currency)}</h3>
+            <p className="mt-1 text-sm text-content-muted">{paymentLabel(method)} · {register?.name || 'Register'}. This checkout does not contact a bank.</p>
+            <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3" role="group" aria-label="Payment method">
+              {methods.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  aria-pressed={method === item.id}
+                  className={`min-h-12 rounded-xl px-2 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 ${method === item.id ? 'bg-accent text-content-inverse' : 'bg-canvas text-content'}`}
+                  onClick={() => { setMethod(item.id); setPayError(''); setUpiState('idle'); setQrState('idle'); setCardState('idle'); }}
+                >
+                  {item.label}
+                </button>
               ))}
             </div>
+            {methods.length === 0 && <p className="mt-3 text-sm text-content-muted">This register has no payment methods enabled.</p>}
+
             {method === 'cash' && (
-              <div className="mt-3">
-                <Input label="Cash received (₹)" type="number" value={tender} onChange={(event) => setTender(event.target.value)} />
-                <p className="mt-2 text-sm text-content" role="status">Change due {money(changePreview, currency)}</p>
+              <div className="mt-4 space-y-2">
+                <p className="text-sm">Total payable {money(duePaise, currency)}</p>
+                <Input label="Cash received (₹)" type="number" min="0" inputMode="decimal" value={tender} onChange={(event) => setTender(event.target.value)} />
+                <p className="text-sm font-medium" role="status">
+                  {tenderedPaise < duePaise
+                    ? `Insufficient cash. Still due ${money(duePaise - Math.max(0, tenderedPaise), currency)}`
+                    : `Change due ${money(changePreview, currency)}`}
+                </p>
               </div>
             )}
-            {method === 'split' && <Input className="mt-3" label="Card portion (₹)" type="number" value={cardSplit} onChange={(event) => setCardSplit(event.target.value)} />}
+
             {method === 'upi' && (
-              <div className="mt-3 text-center">
-                {qr && <img src={qr} alt="Simulated payment code, not a merchant UPI QR" className="mx-auto" />}
-                <p className="text-xs text-content-muted">Demo QR only. It is not a payable UPI link.</p>
-                <div className="mt-2 flex flex-wrap justify-center gap-2">
-                  <Button size="sm" onClick={() => setUpiState('success')}>Simulate success</Button>
-                  <Button size="sm" variant="outline" onClick={() => setUpiState('failed')}>Simulate failure</Button>
-                  <Button size="sm" variant="ghost" onClick={() => { setUpiState('cancelled'); setPayOpen(false); }}>Cancel</Button>
-                </div>
-                {upiState !== 'idle' && <p className="mt-2 text-sm" role="status">Status: {upiState}</p>}
+              <div className="mt-4 space-y-3">
+                <p className="text-sm text-content-muted">Collect {money(duePaise, currency)} in the customer’s UPI app. A reference stored here is not a bank UTR and does not prove payment.</p>
+                <Input label="Transaction reference" value={reference} onChange={(event) => setReference(event.target.value)} hint="Optional. Letters, digits, or hyphens." />
+                <DemoResult state={upiState} onSuccess={() => { setUpiState('success'); setPayError(''); }} onFail={() => { setUpiState('failed'); setPayError(''); }} onCancel={closePay} successLabel="Simulated UPI success" />
               </div>
             )}
-            <div className="mt-4 flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setPayOpen(false)} disabled={paying}>Close</Button>
-              <Button onClick={pay} disabled={paying || !cart.length}>{paying ? 'Saving…' : 'Confirm simulated payment'}</Button>
+
+            {method === 'upi_qr' && (
+              <div className="mt-4 space-y-3">
+                {qrUri ? (
+                  <div className="rounded-2xl border border-border bg-canvas p-4 text-center" data-payable={duePaise}>
+                    <PaymentQr payload={qrUri} />
+                    <p className="mt-2 text-sm font-semibold">{merchant.name}</p>
+                    <p className="text-lg font-semibold tabular-nums">{money(duePaise, currency)}</p>
+                    <p className="mt-1 text-xs text-content-muted">Ref {qrReference}. Showing this QR does not prove the customer paid. Ask the customer to confirm in their app, then record a simulated result in demo mode.</p>
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-border bg-canvas p-4">
+                    <p className="text-sm font-medium">Payment setup required</p>
+                    <p className="mt-1 text-xs leading-relaxed text-content-muted">A scannable UPI QR needs a merchant UPI ID and display name on this business. None is configured, so no payment QR is shown.</p>
+                    {can('settings.manage') && <Link to="/retail/settings" className="mt-3 inline-flex text-sm font-semibold text-accent" onClick={closePay}>Open payment settings</Link>}
+                  </div>
+                )}
+                {demoMode && (
+                  <>
+                    <p className="text-xs text-content-muted">Simulated success and simulated failure stay in this browser. Neither is a bank confirmation.</p>
+                    <DemoResult state={qrState} onSuccess={() => { setQrState('success'); setPayError(''); }} onFail={() => { setQrState('failed'); setPayError(''); }} onCancel={closePay} successLabel="Simulated QR success" />
+                  </>
+                )}
+              </div>
+            )}
+
+            {(method === 'debit' || method === 'credit') && (
+              <div className="mt-4 space-y-3">
+                <div className="grid grid-cols-2 gap-2" role="group" aria-label="Card terminal mode">
+                  <button type="button" aria-pressed={cardMode === 'manual'} className={`min-h-11 rounded-xl px-3 py-2 text-sm font-semibold ${cardMode === 'manual' ? 'bg-accent text-content-inverse' : 'bg-canvas text-content'}`} onClick={() => { setCardMode('manual'); setCardState('idle'); }}>Manual terminal</button>
+                  <button type="button" aria-pressed={cardMode === 'integrated'} className={`min-h-11 rounded-xl px-3 py-2 text-sm font-semibold ${cardMode === 'integrated' ? 'bg-accent text-content-inverse' : 'bg-canvas text-content'}`} onClick={() => { setCardMode('integrated'); setCardState('idle'); }}>Integrated terminal</button>
+                </div>
+                <p className="text-sm">Charge {money(duePaise, currency)} on the card machine.</p>
+                {cardMode === 'manual' ? (
+                  <>
+                    <p className="text-sm text-content-muted">Type that amount on the external terminal. This screen does not see the card result. A reference is optional and must not be a card number, CVV, or PIN.</p>
+                    <Input label="Terminal reference" value={reference} onChange={(event) => setReference(event.target.value)} hint="Optional. Letters, digits, or hyphens." />
+                    {demoMode && <DemoResult state={cardState} onSuccess={() => { setCardState('success'); setPayError(''); }} onFail={() => { setCardState('failed'); setPayError(''); }} onCancel={closePay} successLabel="Simulated manual success" />}
+                  </>
+                ) : (
+                  <p className="rounded-2xl border border-dashed border-border bg-canvas p-4 text-sm text-content-muted">Integrated terminal is not connected. Amount is not sent to a machine. {terminalIntegration.mode === 'unavailable' ? 'A backend must initiate the charge and return a verified result before a sale can be marked paid.' : ''}</p>
+                )}
+              </div>
+            )}
+
+            {method === 'split' && (
+              <div className="mt-4 space-y-3">
+                <p className="text-sm text-content-muted">Cash plus one other tender. The two recorded amounts must cover {money(duePaise, currency)}. Extra cash is change. No card details are stored.</p>
+                <div className="flex flex-wrap gap-2" role="group" aria-label="Other tender">
+                  {splitChoices.map((item) => (
+                    <button key={item.id} type="button" aria-pressed={splitKind === item.id} className={`min-h-11 rounded-xl px-3 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 ${splitKind === item.id ? 'bg-accent text-content-inverse' : 'bg-canvas text-content'}`} onClick={() => { setSplitKind(item.id); setUpiState('idle'); setCardState('idle'); setPayError(''); }}>{item.label}</button>
+                  ))}
+                </div>
+                <Input label={`${paymentLabel(splitKind)} amount (₹)`} type="number" min="0" inputMode="decimal" value={splitAmount} onChange={(event) => { setSplitAmount(event.target.value); setUpiState('idle'); setCardState('idle'); }} />
+                <p className="text-sm" role="status">Remaining for cash {money(Math.max(0, splitRemaining), currency)}</p>
+                <Input label="Cash received (₹)" type="number" min="0" inputMode="decimal" value={tender} onChange={(event) => setTender(event.target.value)} />
+                <p className="text-sm">Change due {money(splitRemaining > 0 && tenderedPaise >= splitRemaining ? changePreview : 0, currency)}</p>
+                {splitKind === 'upi' && <Input label="UPI reference" value={reference} onChange={(event) => setReference(event.target.value)} hint="Optional demo reference. Not a bank UTR." />}
+                {(splitKind === 'debit' || splitKind === 'credit') && cardMode === 'integrated' && (
+                  <p className="text-sm text-content-muted">The card portion cannot be sent to an integrated terminal. Switch the card mode to manual, or choose UPI.</p>
+                )}
+                {demoMode && splitKind === 'upi' && <DemoResult state={upiState} onSuccess={() => { setUpiState('success'); setPayError(''); }} onFail={() => { setUpiState('failed'); setPayError(''); }} onCancel={closePay} successLabel="Simulated UPI success" />}
+                {demoMode && splitKind !== 'upi' && cardMode === 'manual' && <DemoResult state={cardState} onSuccess={() => { setCardState('success'); setPayError(''); }} onFail={() => { setCardState('failed'); setPayError(''); }} onCancel={closePay} successLabel="Simulated card success" />}
+              </div>
+            )}
+
+            {payError && <p className="mt-3 text-sm text-danger" role="alert">{payError}</p>}
+            <p className="mt-3 text-xs text-content-muted" role="status">Status: {method === 'cash' ? 'Cash is recorded in this demo when the amount covers the bill.' : 'Waiting for an explicit simulated result. A QR or button is not bank confirmation.'}</p>
+            <div className="mt-4 flex flex-wrap justify-end gap-2">
+              <Button variant="outline" onClick={closePay} disabled={paying}>Cancel</Button>
+              <Button onClick={pay} disabled={paying || !cart.length || methods.length === 0}>{paying ? 'Saving…' : 'Save sale'}</Button>
             </div>
           </div>
         </div>
@@ -520,8 +818,18 @@ export function PosScreen() {
               <div className="flex justify-between"><dt className="text-content-muted">Discount</dt><dd className="tabular-nums">{money(receipt.discountPaise, currency)}</dd></div>
               <div className="flex justify-between"><dt className="text-content-muted">Tax</dt><dd className="tabular-nums">{money(receipt.taxPaise, currency)}</dd></div>
               <div className="flex justify-between text-base font-semibold"><dt>Total</dt><dd className="tabular-nums">{money(receipt.totalPaise, currency)}</dd></div>
+              {receipt.loyaltyPointsRedeemed > 0 && <div className="flex justify-between"><dt className="text-content-muted">Points redeemed</dt><dd>{receipt.loyaltyPointsRedeemed}</dd></div>}
+              {receipt.loyaltyPointsEarned > 0 && <div className="flex justify-between"><dt className="text-content-muted">Points earned</dt><dd>{receipt.loyaltyPointsEarned}</dd></div>}
             </dl>
-            <p className="mt-2 text-xs">{receipt.payments.map((payment) => payment.method).join(' + ')} · change {money(receipt.changePaise, currency)}</p>
+            <ul className="mt-2 space-y-1 text-xs">
+              {receipt.payments.map((payment, index) => (
+                <li key={`${payment.method}-${index}`} className="flex justify-between gap-3">
+                  <span>{paymentLabel(payment.method)}{payment.reference ? ` · ${payment.reference}` : ''}</span>
+                  <span className="tabular-nums">{money(payment.amountPaise, currency)}</span>
+                </li>
+              ))}
+            </ul>
+            {receipt.changePaise > 0 && <p className="mt-1 text-xs">Change {money(receipt.changePaise, currency)}</p>}
             <p className="mt-2 text-xs text-content-muted">{tenant?.receiptFooter}</p>
             <p className="text-xs text-content-muted">Simulated payment — not verified by a gateway.</p>
             <div className="mt-3 flex gap-2 print:hidden">

@@ -11,17 +11,21 @@ import {
   ProductsTable,
   ProductsToolbar,
 } from '@modules/retail/components/products';
+import { LabelPrintDialog } from '@modules/retail/components/products/LabelPrintDialog.jsx';
+import { assignMissingBarcodes } from '@services/barcode/codes.js';
+import { useToast } from '@shared/feedback/Toast.jsx';
 
 /**
  * Products screen — manage products for the active business.
  * List state comes from ProductsProvider; add/edit live on form routes.
  */
 export function ProductsScreen() {
-  const { products, deleteProduct, duplicateProduct } = useProducts();
+  const { products, deleteProduct, duplicateProduct, updateProduct } = useProducts();
   const { can } = useAuth();
   const canManage = can('products.manage');
   const canStock = can('inventory.manage');
   const navigate = useNavigate();
+  const toast = useToast();
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
@@ -33,6 +37,7 @@ export function ProductsScreen() {
   const [selectedIds, setSelectedIds] = useState([]);
   const [viewProduct, setViewProduct] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [labelIds, setLabelIds] = useState([]);
 
   const categories = useMemo(
     () => [...new Set(products.map((product) => product.category).filter(Boolean))].sort(),
@@ -140,6 +145,9 @@ export function ProductsScreen() {
         {canManage && selectedIds.length > 0 && (
           <div className="flex flex-wrap items-center gap-3 rounded-xl bg-accent-muted px-3 py-2 text-xs text-accent">
             <span className="font-medium">{selectedIds.length} selected</span>
+            <button type="button" onClick={() => setLabelIds(selectedIds)} className="font-semibold underline">
+              Print labels
+            </button>
             <button type="button" onClick={deleteSelected} className="font-semibold underline">
               Delete selected
             </button>
@@ -159,6 +167,7 @@ export function ProductsScreen() {
           onEdit={(product) => navigate(`${product.id}/edit`)}
           onDuplicate={duplicateProduct}
           onDelete={setDeleteTarget}
+          onPrint={(product) => setLabelIds([product.id])}
           onAddProduct={() => navigate('new')}
           canManage={canManage}
           emptyTitle={catalogEmpty ? 'No products yet' : 'No products match'}
@@ -185,6 +194,27 @@ export function ProductsScreen() {
         onEdit={(product) => {
           setViewProduct(null);
           navigate(`${product.id}/edit`);
+        }}
+      />
+
+      <LabelPrintDialog
+        open={labelIds.length > 0}
+        products={labelIds.map((id) => products.find((product) => product.id === id)).filter(Boolean)}
+        onClose={() => setLabelIds([])}
+        onGenerate={(product) => {
+          const used = products.flatMap((item) => [
+            item.barcode,
+            ...(item.details?.combos || []).map((combo) => combo.barcode),
+          ]);
+          const next = assignMissingBarcodes(product, used);
+          const sameProduct = next.barcode === String(product.barcode || '').trim();
+          const sameCombos = JSON.stringify(next.details?.combos || []) === JSON.stringify(product.details?.combos || []);
+          if (sameProduct && sameCombos) {
+            toast.push('This product already has a barcode.', 'danger');
+            return;
+          }
+          const result = updateProduct(product.id, { barcode: next.barcode, details: next.details });
+          toast.push(result?.ok === false ? result.error : `Assigned ${next.barcode}. This is an internal code, not a GS1 barcode.`, result?.ok === false ? 'danger' : 'success');
         }}
       />
 

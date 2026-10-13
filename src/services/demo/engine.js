@@ -1,3 +1,19 @@
+import { nextInternalBarcode } from '../barcode/codes.js';
+import {
+  applySaleLoyalty,
+  commitSaleBalances,
+  configureLoyalty,
+  createExchange,
+  createPurchaseReturn,
+  creditedPaise,
+  eligibleSoldQty,
+  issueStoreCredit,
+  loyaltyDiscountPaise,
+  loyaltyProgram,
+  reverseLoyaltyOnReturn,
+  saveCustomer,
+} from './customerFlows.js';
+import { expectedDrawerPaise } from './drawer.js';
 import { quoteCart } from './money.js';
 
 export function demoError(message, code = 'DEMO_RULE') {
@@ -83,6 +99,8 @@ export function returnedQty(state, saleId, lineIndex) {
     .reduce((sum, line) => sum + line.qty, 0);
 }
 
+export { creditedPaise, eligibleSoldQty };
+
 export function refundedPaise(state, saleId) {
   return state.refunds
     .filter((item) => item.saleId === saleId && item.status !== 'FAILED')
@@ -151,7 +169,15 @@ export function applyDemoAction(state, action) {
     case 'supplier.save':
       return saveNamed(state, 'suppliers', action);
     case 'customer.save':
-      return saveNamed(state, 'customers', action);
+      return saveCustomer(state, { ...action, tenantId: action.tenantId || action.record?.tenantId });
+    case 'loyalty.configure':
+      return configureLoyalty(state, action);
+    case 'exchange.create':
+      return createExchange(state, action);
+    case 'purchase.return':
+      return createPurchaseReturn(state, action);
+    case 'credit.issue':
+      return issueStoreCredit(state, action);
     case 'customer.delete':
       return { ...state, customers: state.customers.filter((item) => item.id !== action.id) };
     case 'branch.save':
@@ -164,6 +190,10 @@ export function applyDemoAction(state, action) {
       return openRegister(state, action);
     case 'register.close':
       return closeRegister(state, action);
+    case 'register.cash':
+      return moveRegisterCash(state, action);
+    case 'expense.save':
+      return saveExpense(state, action);
     case 'staff.invite':
       return inviteStaff(state, action);
     case 'staff.update':
@@ -495,13 +525,7 @@ function saveProduct(state, action) {
 
 function nextBarcode(state, tenantId) {
   const used = new Set(state.products.filter((item) => item.tenantId === tenantId).map((item) => item.barcode));
-  let n = 8902000000000 + state.products.length;
-  let code = String(n);
-  while (used.has(code)) {
-    n += 1;
-    code = String(n);
-  }
-  return code;
+  return nextInternalBarcode(used);
 }
 
 function withStock(state, productId, branchId, delta) {
@@ -645,31 +669,165 @@ function saveRegister(state, action) {
 }
 
 function openRegister(state, action) {
+  const current = state.registers.find((register) => register.id === action.id);
+  if (!current) throw demoError('Register was not found.');
+  if (current.status === 'Open') throw demoError('This register already has an open session.');
+  const openingCashPaise = Math.round(action.openingCashPaise || 0);
+  if (openingCashPaise < 0) throw demoError('Opening cash cannot be negative.');
+  const sessionId = uid('ses');
+  const openedAt = new Date().toISOString();
+  const session = {
+    id: sessionId,
+    tenantId: current.tenantId,
+    branchId: current.branchId,
+    registerId: current.id,
+    cashierId: action.cashierId || null,
+    status: 'Open',
+    openingCashPaise,
+    openedAt,
+  };
   return {
     ...state,
+    registerSessions: [...(state.registerSessions || []), session],
     registers: state.registers.map((register) => register.id === action.id ? {
       ...register,
       status: 'Open',
-      openingCashPaise: action.openingCashPaise,
-      currentCashPaise: action.openingCashPaise,
-      cashierId: action.cashierId,
-      openedAt: new Date().toISOString(),
+      sessionId,
+      openingCashPaise,
+      currentCashPaise: openingCashPaise,
+      cashierId: action.cashierId || register.cashierId,
+      openedAt,
     } : register),
   };
 }
 
 function closeRegister(state, action) {
+  const current = state.registers.find((register) => register.id === action.id);
+  if (!current || current.status !== 'Open') throw demoError('This register is not open.');
+  const counted = Math.round(action.closingCashPaise);
+  if (!Number.isFinite(counted) || counted < 0) throw demoError('Enter the counted cash.');
+  const drawer = expectedDrawerPaise({
+    openingCashPaise: current.openingCashPaise,
+    openedAt: current.openedAt,
+    registerId: current.id,
+    sales: state.sales,
+    refunds: state.refunds,
+    cashMoves: state.cashMoves || [],
+  });
+  const variance = counted - drawer.expectedPaise;
+  const reason = String(action.reason || '').trim();
+  if (variance !== 0 && !reason) throw demoError('Enter a reason for the cash difference.');
+  const closedAt = new Date().toISOString();
+  const summary = {
+    status: 'Closed',
+    closedAt,
+    closingCashPaise: counted,
+    expectedCashPaise: drawer.expectedPaise,
+    differencePaise: variance,
+    reason,
+    cashSalesPaise: drawer.cashSalesPaise,
+    cashRefundsPaise: drawer.cashRefundsPaise,
+    cashInPaise: drawer.cashInPaise,
+    cashOutPaise: drawer.cashOutPaise,
+    methodTotals: drawer.methodTotals,
+  };
+  const sessions = state.registerSessions || [];
+  const sessionId = current.sessionId;
+  const nextSessions = sessionId && sessions.some((item) => item.id === sessionId)
+    ? sessions.map((item) => item.id === sessionId ? { ...item, ...summary } : item)
+    : [...sessions, { id: sessionId || uid('ses'), tenantId: current.tenantId, branchId: current.branchId, registerId: current.id, cashierId: current.cashierId, openingCashPaise: current.openingCashPaise, openedAt: current.openedAt, ...summary }];
   return {
     ...state,
+    registerSessions: nextSessions,
     registers: state.registers.map((register) => register.id === action.id ? {
       ...register,
       status: 'Closed',
-      currentCashPaise: action.closingCashPaise,
-      closedAt: new Date().toISOString(),
-      expectedCashPaise: action.expectedCashPaise,
-      differencePaise: action.closingCashPaise - action.expectedCashPaise,
+      sessionId: null,
+      currentCashPaise: counted,
+      closedAt,
+      expectedCashPaise: drawer.expectedPaise,
+      differencePaise: variance,
+      closeReason: reason,
     } : register),
   };
+}
+
+function moveRegisterCash(state, action) {
+  const register = state.registers.find((item) => item.id === action.registerId && item.tenantId === action.tenantId);
+  if (!register || register.status !== 'Open') throw demoError('Open the register before moving cash.');
+  const amountPaise = Math.round(action.amountPaise || 0);
+  const direction = action.direction === 'out' ? 'out' : 'in';
+  const reason = String(action.reason || '').trim();
+  if (amountPaise <= 0) throw demoError('Enter a cash amount greater than zero.');
+  if (!reason) throw demoError('Enter a reason for this cash movement.');
+  const drawer = expectedDrawerPaise({
+    openingCashPaise: register.openingCashPaise,
+    openedAt: register.openedAt,
+    registerId: register.id,
+    sales: state.sales,
+    refunds: state.refunds,
+    cashMoves: state.cashMoves || [],
+  });
+  if (direction === 'out' && amountPaise > drawer.expectedPaise) throw demoError('That cash out is more than the expected cash in the drawer.');
+  const move = {
+    id: uid('csh'),
+    tenantId: action.tenantId,
+    branchId: register.branchId,
+    registerId: register.id,
+    sessionId: register.sessionId || null,
+    direction,
+    amountPaise,
+    reason,
+    actorId: action.actorId || null,
+    expenseId: action.expenseId || null,
+    createdAt: new Date().toISOString(),
+  };
+  const expectedPaise = drawer.expectedPaise + (direction === 'in' ? amountPaise : -amountPaise);
+  return {
+    ...state,
+    cashMoves: [...(state.cashMoves || []), move],
+    registers: state.registers.map((item) => item.id === register.id ? { ...item, currentCashPaise: expectedPaise } : item),
+  };
+}
+
+const EXPENSE_METHODS = new Set(['cash', 'upi', 'card']);
+
+function saveExpense(state, action) {
+  const amountPaise = Math.round(action.amountPaise || 0);
+  const category = String(action.category || '').trim();
+  const description = String(action.description || '').trim();
+  const method = action.method || 'cash';
+  if (amountPaise <= 0) throw demoError('Enter an expense amount.');
+  if (!category || !description) throw demoError('Category and description are required.');
+  if (!EXPENSE_METHODS.has(method)) throw demoError('Choose cash, UPI, or card for this expense.');
+  const expenseId = uid('exp');
+  let next = state;
+  if (method === 'cash') {
+    if (!action.registerId) throw demoError('Choose the open register that paid this cash expense.');
+    next = moveRegisterCash(state, {
+      tenantId: action.tenantId,
+      registerId: action.registerId,
+      amountPaise,
+      direction: 'out',
+      reason: `Expense · ${category}: ${description}`,
+      actorId: action.actorId,
+      expenseId,
+    });
+  }
+  const expense = {
+    id: expenseId,
+    tenantId: action.tenantId,
+    branchId: action.branchId,
+    registerId: method === 'cash' ? action.registerId : null,
+    category,
+    description,
+    amountPaise,
+    method,
+    cashMoveId: method === 'cash' ? next.cashMoves[next.cashMoves.length - 1].id : null,
+    createdAt: new Date().toISOString(),
+    actorId: action.actorId || null,
+  };
+  return { ...next, expenses: [...(next.expenses || []), expense] };
 }
 
 function inviteStaff(state, action) {
@@ -751,9 +909,22 @@ function createSale(state, action) {
       taxRate: product.taxRate || 0,
     };
   });
-  const quote = quoteCart(priced, action.billDiscountPaise || 0);
-  const paid = (action.payments || []).reduce((sum, payment) => sum + Math.round(payment.amountPaise || 0), 0);
+  const pointValue = loyaltyDiscountPaise(loyaltyProgram(state, action.tenantId), Math.round(Number(action.loyaltyPoints) || 0));
+  const quote = quoteCart(priced, (action.billDiscountPaise || 0) + pointValue);
+  const loyalty = applySaleLoyalty(state, action, quote);
+  const payments = [...(action.payments || [])];
+  if (loyalty.storeCreditPaise > 0) {
+    payments.push({
+      method: 'store_credit',
+      amountPaise: loyalty.storeCreditPaise,
+      status: 'SIMULATED',
+      label: 'Store credit applied. Not a bank payment.',
+    });
+  }
+  const paid = payments.reduce((sum, payment) => sum + Math.round(payment.amountPaise || 0), 0);
   if (paid < quote.totalPaise) throw demoError('Payment does not cover the bill.');
+  const register = state.registers.find((item) => item.id === action.registerId);
+  if (action.registerId && (!register || register.status !== 'Open')) throw demoError('Open the register before saving a sale.');
   let products = state.products;
   for (const line of quote.lines) {
     products = withStock({ ...state, products }, line.productId, action.branchId, -line.qty);
@@ -774,22 +945,27 @@ function createSale(state, action) {
     discountPaise: quote.discountPaise,
     taxPaise: quote.taxPaise,
     totalPaise: quote.totalPaise,
-    payments: (action.payments || []).map((payment) => ({
+    payments: payments.map((payment) => ({
       ...payment,
       amountPaise: Math.round(payment.amountPaise),
       status: 'SIMULATED',
-      label: 'Simulated payment — not verified by a gateway',
+      label: payment.method === 'store_credit' ? 'Store credit applied. Not a bank payment.' : 'Simulated payment — not verified by a gateway',
     })),
+    loyaltyPointsRedeemed: loyalty.pointsUsed,
+    loyaltyPointsEarned: loyalty.pointsEarned,
+    loyaltyDiscountPaise: loyalty.loyaltyDiscountPaise,
+    storeCreditPaise: loyalty.storeCreditPaise,
     changePaise: paid - quote.totalPaise,
     status: 'PAID',
   };
+  const balanced = commitSaleBalances({ ...state, products }, action, sale, loyalty);
   const registers = state.registers.map((register) => {
     if (register.id !== action.registerId) return register;
-    const cash = action.payments.filter((payment) => payment.method === 'cash').reduce((sum, payment) => sum + Math.round(payment.amountPaise), 0);
+    const cash = payments.filter((payment) => payment.method === 'cash').reduce((sum, payment) => sum + Math.round(payment.amountPaise), 0);
     return { ...register, currentCashPaise: (register.currentCashPaise || 0) + cash - sale.changePaise };
   });
   return audit({
-    ...state,
+    ...balanced,
     products,
     registers,
     sales: [sale, ...state.sales],
@@ -816,7 +992,7 @@ function createReturn(state, action) {
   const lines = action.lines.map((line) => {
     const original = sale.lines[line.lineIndex];
     if (!original) throw demoError('That line is not on the invoice.');
-    const already = returnedQty(state, sale.id, line.lineIndex);
+    const already = original.qty - eligibleSoldQty(state, sale, line.lineIndex);
     const qty = Math.round(line.qty);
     if (qty <= 0 || qty + already > original.qty) throw demoError(`Return quantity for ${original.name} exceeds the quantity sold.`);
     const amountPaise = Math.round((original.totalPaise * qty) / original.qty);
@@ -828,6 +1004,8 @@ function createReturn(state, action) {
       if (line.restock) products = withStock({ ...state, products }, line.productId, sale.branchId, line.qty);
     }
   }
+  const amountPaise = lines.reduce((sum, line) => sum + line.amountPaise, 0);
+  const reversed = reverseLoyaltyOnReturn({ ...state, products }, sale, amountPaise);
   const record = {
     id: uid('ret'),
     tenantId: action.tenantId,
@@ -835,10 +1013,12 @@ function createReturn(state, action) {
     invoiceNo: sale.invoiceNo,
     lines,
     reason: action.reason || 'Customer return',
-    amountPaise: lines.reduce((sum, line) => sum + line.amountPaise, 0),
+    amountPaise,
+    loyaltyPointsReversed: reversed.loyaltyPointsReversed,
+    loyaltyPointsRestored: reversed.loyaltyPointsRestored,
     createdAt: new Date().toISOString(),
   };
-  return audit({ ...state, products, returns: [record, ...state.returns] }, {
+  return audit({ ...reversed.state, products, returns: [record, ...state.returns] }, {
     tenantId: action.tenantId,
     actor: action.actor || 'user',
     action: 'return.created',
@@ -852,7 +1032,7 @@ function createRefund(state, action) {
   const sale = state.sales.find((item) => item.id === action.saleId && item.tenantId === action.tenantId);
   if (!sale) throw demoError('Original sale was not found.');
   const returned = state.returns.filter((item) => item.saleId === sale.id).reduce((sum, item) => sum + item.amountPaise, 0);
-  const already = refundedPaise(state, sale.id);
+  const already = refundedPaise(state, sale.id) + creditedPaise(state, sale.id);
   const amountPaise = Math.round(action.amountPaise);
   if (amountPaise <= 0) throw demoError('Enter a refund amount.');
   if (amountPaise + already > returned) throw demoError('Refund cannot exceed the value of returned items.');
@@ -869,7 +1049,14 @@ function createRefund(state, action) {
     createdAt: new Date().toISOString(),
     note: 'Simulated refund — no money was transferred.',
   };
-  return audit({ ...state, refunds: [refund, ...state.refunds] }, {
+  const cashRefund = refund.method === 'cash';
+  const registers = cashRefund
+    ? state.registers.map((register) => {
+      if (register.id !== sale.registerId || register.status !== 'Open') return register;
+      return { ...register, currentCashPaise: Math.max(0, (register.currentCashPaise || 0) - amountPaise) };
+    })
+    : state.registers;
+  return audit({ ...state, registers, refunds: [refund, ...state.refunds] }, {
     tenantId: action.tenantId,
     actor: action.actor || 'user',
     action: 'refund.created',

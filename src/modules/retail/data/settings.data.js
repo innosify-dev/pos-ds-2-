@@ -5,6 +5,7 @@
 export const settingsSections = [
   { id: 'profile', label: 'Business profile' },
   { id: 'tax', label: 'Tax' },
+  { id: 'payments', label: 'Payments' },
   { id: 'operations', label: 'Operations' },
   { id: 'receipt', label: 'Receipt' },
   { id: 'appearance', label: 'Branding' },

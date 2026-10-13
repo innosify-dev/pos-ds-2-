@@ -12,6 +12,6 @@ export {
 } from '../demo/store.js';
 
 export const apiService = {
-  mode: import.meta.env.VITE_DEMO_MODE === 'false' ? 'http' : 'demo',
+  mode: import.meta.env.VITE_DEMO_MODE === 'true' ? 'demo' : 'http',
   note: 'Demo mode does not call the NestJS API and does not process real payments.',
 };

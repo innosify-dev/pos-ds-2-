@@ -175,3 +175,43 @@
     background-position: -200% 0;
   }
 }
+
+#label-print-root {
+  position: absolute;
+  left: -10000px;
+  top: 0;
+  background: #fff;
+  color: #111;
+}
+
+@media print {
+  body[data-label-print='on'] > *:not(#label-print-root) {
+    display: none !important;
+  }
+
+  body[data-label-print='on'] #label-print-root {
+    display: block !important;
+    position: static;
+    left: auto;
+    top: auto;
+    width: auto;
+    background: #fff;
+    color: #111;
+  }
+
+  body[data-label-print='on'] #label-print-root * {
+    box-shadow: none !important;
+  }
+
+  .label-sheet {
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 2mm;
+  }
+
+  .label-sheet-break {
+    break-after: page;
+    page-break-after: always;
+  }
+}

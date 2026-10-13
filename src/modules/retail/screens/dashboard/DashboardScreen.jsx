@@ -199,6 +199,11 @@ export function DashboardScreen() {
                 {can('products.manage') && <Button size="sm" variant="outline" onClick={() => navigate('/retail/products/new')}>Add product</Button>}
                 {can('products.view') && <Button size="sm" variant="outline" onClick={() => navigate('/retail/categories')}>Categories</Button>}
                 {can('inventory.manage') && <Button size="sm" variant="outline" onClick={() => navigate('/retail/inventory')}>Stock</Button>}
+                {can('purchases.manage') && <Button size="sm" variant="outline" onClick={() => navigate('/retail/purchases')}>Purchases</Button>}
+                {can('purchases.manage') && <Button size="sm" variant="outline" onClick={() => navigate('/retail/suppliers')}>Suppliers</Button>}
+                {can('registers.manage') && <Button size="sm" variant="outline" onClick={() => navigate('/retail/registers')}>Registers</Button>}
+                {can('team.manage') && <Button size="sm" variant="outline" onClick={() => navigate('/retail/team')}>Staff</Button>}
+                {can('analytics.view') && <Button size="sm" variant="outline" onClick={() => navigate('/retail/analytics')}>Reports</Button>}
               </div>
             </section>
             <RestockCard
@@ -243,7 +248,7 @@ export function DashboardScreen() {
 
         <WorkingHoursTracker hourly={model.hourly} className="p-3" />
 
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        {demoMode && <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <SalesTargetCard
             dense
             target={{
@@ -255,7 +260,7 @@ export function DashboardScreen() {
             }}
           />
           <ShiftTracker compact />
-        </div>
+        </div>}
 
         <QuickAddModal
           open={quickAddOpen}

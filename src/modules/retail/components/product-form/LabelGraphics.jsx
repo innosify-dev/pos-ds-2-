@@ -1,90 +1,133 @@
-import { useMemo } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import JsBarcode from 'jsbarcode';
+import QRCode from 'qrcode';
+import { useTenant } from '@core/tenant/TenantProvider.jsx';
+import { qrPayload } from '@services/barcode/codes.js';
 import { cn } from '@utils/cn';
-
-/** Deterministic pseudo-random bits from a string seed. */
-function bits(seed, count) {
-  let h = 2166136261;
-  for (const ch of seed) {
-    h ^= ch.charCodeAt(0);
-    h = Math.imul(h, 16777619);
-  }
-  const out = [];
-  let x = h >>> 0 || 1;
-  for (let i = 0; i < count; i += 1) {
-    x ^= x << 13;
-    x ^= x >>> 17;
-    x ^= x << 5;
-    out.push((x >>> 0) % 2);
-  }
-  return out;
-}
-
-export function FakeQr({ seed, className }) {
-  const n = 21;
-  const cells = useMemo(() => bits(`qr:${seed}`, n * n), [seed]);
-  const finder = (r0, c0) => {
-    const rects = [];
-    for (let r = 0; r < 7; r += 1) {
-      for (let c = 0; c < 7; c += 1) {
-        const edge = r === 0 || r === 6 || c === 0 || c === 6;
-        const core = r >= 2 && r <= 4 && c >= 2 && c <= 4;
-        if (edge || core) rects.push(<rect key={`${r}-${c}`} x={c0 + c} y={r0 + r} width="1" height="1" />);
-      }
-    }
-    return rects;
-  };
-  const inFinder = (r, c) =>
-    (r < 8 && c < 8) || (r < 8 && c >= n - 8) || (r >= n - 8 && c < 8);
-  return (
-    <svg viewBox={`0 0 ${n} ${n}`} className={cn('h-28 w-28 text-content', className)} shapeRendering="crispEdges" aria-label="QR code preview">
-      {cells.map((b, i) => {
-        const r = Math.floor(i / n);
-        const c = i % n;
-        if (!b || inFinder(r, c)) return null;
-        return <rect key={i} x={c} y={r} width="1" height="1" fill="currentColor" />;
-      })}
-      <g fill="currentColor">
-        {finder(0, 0)}
-        {finder(0, n - 7)}
-        {finder(n - 7, 0)}
-      </g>
-    </svg>
-  );
-}
-
-export function FakeBarcode({ seed, className, hideLabel }) {
-  const bars = useMemo(() => bits(`bar:${seed}`, 60), [seed]);
-  return (
-    <div aria-label="Barcode preview">
-      <svg viewBox="0 0 120 36" className={cn('h-9 w-36 text-content', className)} shapeRendering="crispEdges">
-        {bars.map((b, i) => (
-          <rect key={i} x={i * 2} y="0" width={b ? 2 : 1} height="30" fill="currentColor" />
-        ))}
-      </svg>
-      {!hideLabel && <p className="mt-1 text-center text-[10px] tracking-widest text-content-muted">{seed}</p>}
-    </div>
-  );
-}
 
 export function formatLabelPrice(value) {
   const n = Number(value);
-  if (value === '' || Number.isNaN(n)) return '—';
+  if (value === '' || value == null || Number.isNaN(n)) return '—';
   return `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export function BrandMark({ className }) {
+  const { tenant } = useTenant();
   return (
-    <p className={cn('font-serif text-lg font-bold italic text-plum', className)}>Nalli</p>
+    <div className={cn('flex items-center justify-center gap-[1mm]', className)}>
+      {tenant?.logoDataUrl ? <img src={tenant.logoDataUrl} alt="" className="h-[4mm] w-[4mm] object-contain" /> : null}
+      <p className="truncate text-center text-[2.4mm] font-semibold text-content">
+        {tenant?.name || 'Business'}
+      </p>
+    </div>
   );
 }
 
+/** Standards-compliant Code 128. Renders nothing decorative when the value is missing or invalid. */
+export function ProductCode128({ value, className, hideLabel = false }) {
+  const code = String(value || '').trim();
+  const svgRef = useRef(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    const node = svgRef.current;
+    if (!node || !code) return undefined;
+    try {
+      JsBarcode(node, code, {
+        format: 'CODE128',
+        displayValue: false,
+        margin: 8,
+        height: 48,
+        width: 1.6,
+        background: '#ffffff',
+        lineColor: '#111827',
+      });
+      setFailed(false);
+    } catch {
+      node.replaceChildren();
+      setFailed(true);
+    }
+    return undefined;
+  }, [code]);
+
+  if (!code) {
+    return <p className="text-center text-[2.2mm] text-content-muted">No barcode assigned</p>;
+  }
+
+  return (
+    <div className={cn('flex h-full w-full flex-col items-center justify-center bg-white', className)}>
+      {failed ? (
+        <p className="text-center text-[2.2mm] text-content-muted">This value cannot be encoded as Code 128.</p>
+      ) : (
+        <svg ref={svgRef} className="h-full max-h-full w-full" role="img" aria-label={`Code 128 ${code}`} />
+      )}
+      {!hideLabel && <p className="mt-0.5 text-center tracking-widest text-content" style={{ fontSize: '2.4mm' }}>{code}</p>}
+    </div>
+  );
+}
+
+function productQrSvg(payload) {
+  const qr = QRCode.create(payload, { errorCorrectionLevel: 'M' });
+  const cells = qr.modules.size;
+  const margin = 2;
+  const size = cells + margin * 2;
+  let marks = '';
+  for (let row = 0; row < cells; row += 1) {
+    for (let col = 0; col < cells; col += 1) {
+      if (qr.modules.get(row, col)) marks += `<rect x="${col + margin}" y="${row + margin}" width="1" height="1"/>`;
+    }
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" shape-rendering="crispEdges"><rect width="100%" height="100%" fill="#ffffff"/><g fill="#111827">${marks}</g></svg>`;
+}
+
+/** Product lookup QR. The payload is the scan code only. */
+export function ProductQr({ value, className }) {
+  const payload = qrPayload(value);
+  let svg = '';
+  if (payload) {
+    try {
+      svg = productQrSvg(payload);
+    } catch {
+      svg = '';
+    }
+  }
+
+  if (!payload) return <p className="text-center text-[2.2mm] text-content-muted">No QR payload</p>;
+  if (!svg) return <p className="text-center text-[2.2mm] text-content-muted">QR could not be created</p>;
+  return (
+    <div
+      className={cn('flex h-full w-full items-center justify-center bg-white [&_svg]:h-full [&_svg]:w-full', className)}
+      role="img"
+      aria-label={`Product QR ${payload}`}
+      dangerouslySetInnerHTML={{ __html: svg }}
+    />
+  );
+}
+
+/** Existing call sites. These now render real codes for the supplied value. */
+export function FakeQr({ seed, className }) {
+  return <ProductQr value={seed} className={className} />;
+}
+
+export function FakeBarcode({ seed, className, hideLabel }) {
+  return <ProductCode128 value={seed} className={className} hideLabel={hideLabel} />;
+}
+
+function scanCode(combo) {
+  return String(combo?.barcode || '').trim();
+}
+
 /**
- * Render a single label template element with live variant data.
+ * Render a single label template element with live product data.
  * Geometry (mm) is applied by the caller.
  */
 export function LabelElement({ element, combo, productName }) {
-  const sku = combo?.sku ?? 'SKU';
-  const selling = combo?.selling ?? '';
+  const sku = combo?.sku ?? '';
+  const code = scanCode(combo);
+  const selling = combo?.selling ?? combo?.price ?? '';
+  const mrp = Number(combo?.mrp);
+  const showMrp = Number.isFinite(mrp) && mrp > 0;
+  const title = [productName || 'Product', combo?.variantName].filter(Boolean).join(' · ');
 
   switch (element.type) {
     case 'brand':
@@ -95,13 +138,13 @@ export function LabelElement({ element, combo, productName }) {
           className="text-center text-content"
           style={{
             fontFamily: element.font || 'inherit',
-            fontSize: element.fontSize ? `${element.fontSize * 0.35}mm` : undefined,
-            fontWeight: element.bold ? 700 : 400,
+            fontSize: element.fontSize ? `${element.fontSize * 0.35}mm` : '2.8mm',
+            fontWeight: element.bold ? 700 : 600,
             fontStyle: element.italic ? 'italic' : 'normal',
             textAlign: element.align || 'center',
           }}
         >
-          {productName || 'Product'}
+          {title}
         </p>
       );
     case 'text':
@@ -122,15 +165,15 @@ export function LabelElement({ element, combo, productName }) {
       );
     case 'qr':
       return (
-        <div className="flex justify-center">
-          <FakeQr seed={sku} className="h-full w-full" />
+        <div className="flex h-full w-full justify-center">
+          <ProductQr value={code} className="h-full w-full" />
         </div>
       );
     case 'barcode':
       return (
-        <div className="flex flex-col items-center">
-          <FakeBarcode seed={sku} className="h-full w-full" hideLabel />
-          <p className="mt-0.5 text-center tracking-widest text-content" style={{ fontSize: '2.6mm' }}>{sku}</p>
+        <div className="flex h-full w-full flex-col items-center">
+          <ProductCode128 value={code} className="min-h-0 flex-1" hideLabel />
+          <p className="text-center tracking-widest text-content" style={{ fontSize: '2.4mm' }}>{code || 'No barcode'}</p>
         </div>
       );
     case 'price':
@@ -139,14 +182,15 @@ export function LabelElement({ element, combo, productName }) {
           className="text-center font-bold text-content"
           style={{
             fontFamily: element.font || 'inherit',
-            fontSize: element.fontSize ? `${element.fontSize * 0.35}mm` : undefined,
+            fontSize: element.fontSize ? `${element.fontSize * 0.35}mm` : '3.2mm',
           }}
         >
           {formatLabelPrice(selling)}
+          {showMrp ? <span className="mt-0.5 block text-[2.2mm] font-medium">MRP {formatLabelPrice(mrp)}</span> : null}
         </p>
       );
     case 'sku':
-      return <p className="text-center tracking-widest text-content" style={{ fontSize: '2.6mm' }}>{sku}</p>;
+      return <p className="text-center tracking-widest text-content" style={{ fontSize: '2.4mm' }}>{sku || '—'}</p>;
     case 'line':
       return <div className="h-px w-full bg-content" />;
     case 'rectangle':

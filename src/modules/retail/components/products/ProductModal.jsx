@@ -2,6 +2,7 @@ import { Modal } from '@shared/dialogs/Modal';
 import { Button } from '@shared/ui/Button';
 import { formatInr } from '@modules/retail/data/products.data.js';
 import { StatusPill } from './ProductsToolbar.jsx';
+import { ProductCode128, ProductQr } from '@modules/retail/components/product-form/LabelGraphics.jsx';
 
 function stockLabel(product) {
   const qty = Number(product.stock) || 0;
@@ -78,6 +79,14 @@ export function ProductModal({ open, product, onClose, onEdit, canManage }) {
           <dd className="mt-0.5 font-medium text-content">{product.returnable ? 'Yes' : 'No'}</dd>
         </div>
       </dl>
+      {product.barcode ? (
+        <div className="mt-4 grid gap-3 rounded-xl border border-border bg-white p-3 sm:grid-cols-[1fr_7rem]">
+          <ProductCode128 value={product.barcode} />
+          <ProductQr value={product.barcode} className="h-28" />
+        </div>
+      ) : (
+        <p className="mt-4 text-sm text-content-muted">No barcode assigned. Print labels can create an internal code without changing an existing one.</p>
+      )}
       {details.description ? (
         <p className="mt-4 text-sm text-content-muted">{details.description}</p>
       ) : null}

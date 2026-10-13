@@ -46,9 +46,16 @@ function stockLabel(product) {
 
 const iconCls = 'h-4 w-4';
 
-function RowActions({ product, canManage, onView, onEdit, onDuplicate, onDelete }) {
+function RowActions({ product, canManage, onView, onEdit, onDuplicate, onDelete, onPrint }) {
   return (
     <div className="flex items-center justify-end gap-0.5">
+      {canManage && onPrint && (
+        <ActionButton title="Barcode and label" onClick={() => onPrint(product)}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconCls}>
+            <path d="M4 7v10M7 7v10M10 7v10M14 7v10M18 7v10M21 7v10" strokeLinecap="round" />
+          </svg>
+        </ActionButton>
+      )}
       <ActionButton title="View" onClick={() => onView(product)}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconCls}>
           <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" />
@@ -94,6 +101,7 @@ export function ProductsTable({
   onEdit,
   onDuplicate,
   onDelete,
+  onPrint,
   onAddProduct,
   canManage = true,
   emptyTitle,
@@ -138,7 +146,7 @@ export function ProductsTable({
               <StatusPill status={product.status} />
               <span className="text-xs text-content-muted">{product.stock} in stock</span>
               <div className="ml-auto">
-                <RowActions product={product} canManage={canManage} onView={onView} onEdit={onEdit} onDuplicate={onDuplicate} onDelete={onDelete} />
+                <RowActions product={product} canManage={canManage} onView={onView} onEdit={onEdit} onDuplicate={onDuplicate} onDelete={onDelete} onPrint={onPrint} />
               </div>
             </div>
           </li>
@@ -205,7 +213,7 @@ export function ProductsTable({
                   <StatusPill status={product.status} />
                 </TableCell>
                 <TableCell>
-                  <RowActions product={product} canManage={canManage} onView={onView} onEdit={onEdit} onDuplicate={onDuplicate} onDelete={onDelete} />
+                  <RowActions product={product} canManage={canManage} onView={onView} onEdit={onEdit} onDuplicate={onDuplicate} onDelete={onDelete} onPrint={onPrint} />
                 </TableCell>
               </TableRow>
             ))}

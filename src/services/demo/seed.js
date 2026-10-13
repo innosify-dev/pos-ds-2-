@@ -354,6 +354,11 @@ export function createSeed(now = new Date()) {
     sales,
     returns,
     refunds,
+    exchanges: [],
+    purchaseReturns: [],
+    loyaltyPrograms: {},
+    loyaltyLedger: [],
+    creditLedger: [],
     purchases: [
       { id: 'pur-takshi-1', tenantId: 't-takshi', supplierId: 's1', branchId: 'b-takshi-main', status: 'RECEIVED', note: 'Demo goods receipt. No purchase order was sent to a supplier.', createdAt: at(now, 4, 10), lines: [{ productId: 'p-cotton', name: 'Handloom Cotton Saree', qty: 6 }] },
       { id: 'pur-takshi-2', tenantId: 't-takshi', supplierId: 's1', branchId: 'b-takshi-city', status: 'RECEIVED', note: 'Demo goods receipt for the showroom.', createdAt: at(now, 9, 11), lines: [{ productId: 'p-banaras', name: 'Banarasi Silk Saree', qty: 2 }] },
@@ -368,6 +373,9 @@ export function createSeed(now = new Date()) {
       { id: 'mov-4', tenantId: 't-fresh', productId: 'p-parle', type: 'TRANSFER', delta: 10, fromBranchId: 'b-fresh', toBranchId: 'b-fresh-east', reason: 'Demo transfer to Koregaon Park', createdAt: at(now, 2, 17) },
     ],
     heldBills: [],
+    cashMoves: [],
+    expenses: [],
+    registerSessions: [],
     invitations: [{
       id: 'inv-demo',
       tenantId: 't-takshi',

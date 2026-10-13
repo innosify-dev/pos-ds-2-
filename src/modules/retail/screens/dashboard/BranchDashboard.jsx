@@ -117,6 +117,22 @@ export function BranchDashboard() {
         </section>
 
         <section className="premium-card p-3">
+          <h3 className="text-sm font-semibold text-content">Recent expenses</h3>
+          {(state.expenses || []).filter((item) => item.tenantId === tenant?.id && item.branchId === branch?.id).length === 0 ? (
+            <p className="py-3 text-xs text-content-muted">No expenses recorded at this branch.</p>
+          ) : (
+            <ul className="mt-1">
+              {(state.expenses || []).filter((item) => item.tenantId === tenant?.id && item.branchId === branch?.id).slice(-4).reverse().map((item) => (
+                <li key={item.id} className="flex justify-between gap-2 py-1 text-xs">
+                  <span className="truncate">{item.category} · {item.description}</span>
+                  <span className="tabular-nums">{inr(item.amountPaise / 100)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <section className="premium-card p-3">
           <div className="flex items-center justify-between gap-2">
             <h3 className="text-sm font-semibold text-content">Stock alerts</h3>
             {can('inventory.manage') && (

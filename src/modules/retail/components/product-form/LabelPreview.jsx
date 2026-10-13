@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Button } from '@shared/ui/Button';
 import { useTenant } from '@core/tenant/TenantProvider.jsx';
-import { BrandMark, FakeBarcode, FakeQr, formatLabelPrice } from './LabelGraphics.jsx';
+import { BrandMark, ProductCode128, ProductQr, formatLabelPrice } from './LabelGraphics.jsx';
 import { loadTemplate, saveTemplateToStorage } from './labelTemplate.js';
 import { PrintPreviewModal } from './PrintPreviewModal.jsx';
 import { TemplateEditorModal } from './TemplateEditorModal.jsx';
@@ -11,14 +11,25 @@ import { TemplateEditorModal } from './TemplateEditorModal.jsx';
  * Owns the label template (persisted to localStorage) shared by the
  * print preview and template editor dialogs.
  */
-export function LabelPreview({ combos, index, onIndex, productName }) {
+export function LabelPreview({ combos, index, onIndex, productName, barcode = '', sku = '', price = '', mrp = '' }) {
   const { tenant } = useTenant();
   const [template, setTemplate] = useState(() => loadTemplate(tenant?.id));
   const [printOpen, setPrintOpen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
+  const variantMode = combos.length > 0;
+  const rows = useMemo(() => {
+    const source = variantMode
+      ? combos
+      : [{ key: 'product', name: productName || 'Product', sku, selling: price, mrp, barcode }];
+    return source.map((combo) => ({
+      ...combo,
+      barcode: String(combo.barcode || barcode || '').trim(),
+      variantName: variantMode ? combo.name : '',
+    }));
+  }, [barcode, combos, mrp, price, productName, sku, variantMode]);
 
-  const total = combos.length;
-  const current = total > 0 ? combos[Math.min(index, total - 1)] : null;
+  const total = rows.length;
+  const current = total > 0 ? rows[Math.min(index, total - 1)] : null;
 
   const go = (dir) => {
     if (total === 0) return;
@@ -55,7 +66,7 @@ export function LabelPreview({ combos, index, onIndex, productName }) {
           </svg>
         </button>
         <span className="text-xs text-content-muted">
-          Variant {total === 0 ? 0 : Math.min(index, total - 1) + 1} of {total}
+          {variantMode ? 'Variant' : 'Product'} {total === 0 ? 0 : Math.min(index, total - 1) + 1} of {total}
         </span>
         <button
           type="button"
@@ -72,16 +83,16 @@ export function LabelPreview({ combos, index, onIndex, productName }) {
 
       {current ? (
         <div className="flex flex-col items-center rounded-xl border border-border px-4 py-5 text-center">
-          <p className="text-[11px] text-content-muted">Variant</p>
-          <p className="text-sm font-semibold text-content">{current.name}</p>
-          <p className="mt-1 text-[11px] text-content-muted">SKU</p>
-          <p className="text-xs font-semibold tracking-wide text-content">{current.sku}</p>
-          <div className="my-3 flex flex-col items-center gap-1 rounded-lg border border-border px-6 py-4">
+          <p className="text-[11px] text-content-muted">{variantMode ? 'Variant' : 'Product'}</p>
+          <p className="text-sm font-semibold text-content">{current.variantName || productName || 'Product'}</p>
+          <p className="mt-1 text-[11px] text-content-muted">Code</p>
+          <p className="text-xs font-semibold tracking-wide text-content">{current.barcode || 'Assigned when you save'}</p>
+          <div className="my-3 flex w-full max-w-[220px] flex-col items-center gap-1 rounded-lg border border-border bg-white px-4 py-4">
             <BrandMark />
             <p className="text-[11px] text-content">{productName || 'Product'}</p>
-            <FakeQr seed={current.sku} />
+            <ProductQr value={current.barcode} className="h-28 w-28" />
             <p className="mt-2 text-base font-bold text-content">{formatLabelPrice(current.selling)}</p>
-            <FakeBarcode seed={current.sku} />
+            <ProductCode128 value={current.barcode} className="h-16 w-full" />
           </div>
           <div className="flex w-full gap-2">
             <Button variant="outline" size="sm" className="flex-1" onClick={() => setEditorOpen(true)}>
@@ -91,7 +102,7 @@ export function LabelPreview({ combos, index, onIndex, productName }) {
               </svg>
               Edit Label
             </Button>
-            <Button variant="outline" size="sm" className="flex-1" onClick={() => setPrintOpen(true)}>
+            <Button variant="outline" size="sm" className="flex-1" onClick={() => setPrintOpen(true)} disabled={!current.barcode}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4">
                 <path d="M7 8V3.5h10V8M7 17H4.5v-7h15v7H17M7 14.5h10v6H7z" strokeLinejoin="round" />
               </svg>
@@ -101,14 +112,14 @@ export function LabelPreview({ combos, index, onIndex, productName }) {
         </div>
       ) : (
         <p className="rounded-xl border border-dashed border-border px-4 py-10 text-center text-xs text-content-muted">
-          Add variant values to preview labels.
+          Enter a product name to preview its label. Variant labels appear after variant values are added.
         </p>
       )}
 
       <PrintPreviewModal
         open={printOpen}
         onClose={() => setPrintOpen(false)}
-        combos={combos}
+        combos={rows}
         index={index}
         onIndex={onIndex}
         productName={productName}

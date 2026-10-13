@@ -459,7 +459,16 @@ export function ProductFormScreen() {
             onApplyAll={handleApplyAll}
           />
         </div>
-        <LabelPreview combos={combos} index={comboIndex} onIndex={setComboIndex} productName={info.name} />
+        <LabelPreview
+          combos={combos}
+          index={comboIndex}
+          onIndex={setComboIndex}
+          productName={info.name}
+          barcode={existing?.barcode || ''}
+          sku={info.sku}
+          price={pricing.selling}
+          mrp={pricing.mrp}
+        />
       </div>
 
       <PricingTax

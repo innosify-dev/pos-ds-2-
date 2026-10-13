@@ -8,7 +8,9 @@ import { accentOptions, notificationToggles, settingsSections, shapeOptions, sid
 import { demoMode, useDemo } from '@services/demo';
 import { useTenant } from '@core/tenant/TenantProvider.jsx';
 import { useToast } from '@shared/feedback/Toast.jsx';
+import { isValidVpa } from '@services/payments/upiIntent.js';
 import { cn } from '@utils/cn';
+import { LoyaltySettings } from './LoyaltySettings.jsx';
 
 function Toggle({ checked, onChange, label }) {
   return (
@@ -100,6 +102,8 @@ export function SettingsScreen() {
       openingTime: tenant.openingTime || '10:00',
       closingTime: tenant.closingTime || '21:00',
       logoDataUrl: tenant.logoDataUrl || '',
+      upiVpa: tenant.upiVpa || '',
+      upiPayeeName: tenant.upiPayeeName || '',
     });
     if (tenant.notifications) setToggles((current) => ({ ...current, ...tenant.notifications }));
     const storedAccent = accentOptions.find((option) => option.id === localStorage.getItem(accentKey(tenant.id)));
@@ -152,6 +156,18 @@ export function SettingsScreen() {
       setFieldError('GSTIN is optional. When entered, it needs 15 letters or digits.');
       return;
     }
+    const upiVpa = profile.upiVpa?.trim() || '';
+    const upiPayeeName = profile.upiPayeeName?.trim() || '';
+    if (upiVpa || upiPayeeName) {
+      if (!isValidVpa(upiVpa)) {
+        setFieldError('Merchant UPI ID must look like name@bank. Leave both payment fields blank if UPI QR is not set up.');
+        return;
+      }
+      if (upiPayeeName.length < 2 || upiPayeeName.length > 50) {
+        setFieldError('Merchant display name needs 2 to 50 characters.');
+        return;
+      }
+    }
     setFieldError('');
     setSaving(true);
     const result = dispatch({
@@ -171,6 +187,8 @@ export function SettingsScreen() {
         openingTime: profile.openingTime,
         closingTime: profile.closingTime,
         logoDataUrl: profile.logoDataUrl || '',
+        upiVpa,
+        upiPayeeName,
       },
       actor: 'settings',
     });
@@ -210,6 +228,8 @@ export function SettingsScreen() {
       openingTime: tenant.openingTime || '10:00',
       closingTime: tenant.closingTime || '21:00',
       logoDataUrl: tenant.logoDataUrl || '',
+      upiVpa: tenant.upiVpa || '',
+      upiPayeeName: tenant.upiPayeeName || '',
     });
   };
 
@@ -272,6 +292,7 @@ export function SettingsScreen() {
           {tenant?.name}. Changes stay on this business in this browser’s demo data.
         </p>
       </header>
+      <LoyaltySettings />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[220px_1fr]">
         <nav className="animate-fade-up flex flex-row gap-1 lg:flex-col" style={{ animationDelay: '80ms' }}>
@@ -293,7 +314,7 @@ export function SettingsScreen() {
         </nav>
 
         <div className="animate-fade-up" style={{ animationDelay: '140ms' }}>
-          {profile && (section === 'profile' || section === 'tax' || section === 'operations' || section === 'receipt') && (
+          {profile && (section === 'profile' || section === 'tax' || section === 'payments' || section === 'operations' || section === 'receipt') && (
             <div className="max-w-2xl space-y-4">
               {fieldError && <p className="text-sm text-danger" role="alert">{fieldError}</p>}
               {section === 'profile' && (
@@ -314,6 +335,15 @@ export function SettingsScreen() {
               {section === 'tax' && (
                 <PanelCard title="Tax information" subtitle="GSTIN is printed on receipts when it is filled in">
                   <Input label="GSTIN" value={profile.gstin || ''} hint="Optional. 15 letters or digits. This demo stores one GST total and does not split CGST, SGST, or IGST." onChange={(event) => setProfile({ ...profile, gstin: event.target.value.toUpperCase() })} />
+                </PanelCard>
+              )}
+              {section === 'payments' && (
+                <PanelCard title="UPI QR" subtitle="Used only to build a payment QR for the current bill">
+                  <div className="grid grid-cols-1 gap-3">
+                    <Input label="Merchant UPI ID" value={profile.upiVpa || ''} hint="Optional. Example shape: shopname@okbank. No UPI ID is invented when this is blank." onChange={(event) => setProfile({ ...profile, upiVpa: event.target.value.trim() })} />
+                    <Input label="Merchant display name" value={profile.upiPayeeName || ''} hint="Shown in the customer’s UPI app. 2 to 50 characters." onChange={(event) => setProfile({ ...profile, upiPayeeName: event.target.value })} />
+                  </div>
+                  <p className="mt-3 text-xs text-content-muted">A QR built from these fields asks the customer to pay. It does not confirm that the bank received the money. Card terminals are not connected from this screen.</p>
                 </PanelCard>
               )}
               {section === 'operations' && (
